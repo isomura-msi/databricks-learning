@@ -165,6 +165,11 @@ DESCRIBE TABLE EXTENDED external_table;
 
 -- COMMAND ----------
 
+-- MAGIC %python
+-- MAGIC display(dbutils.fs.ls("dbfs:/mnt/dbacademy-users/labuser6637203@vocareum.com/data-engineering-with-databricks/external_table"))
+
+-- COMMAND ----------
+
 -- DBTITLE 0,--i18n-72f7bef4-570b-4c20-9261-b763b66b6942
 -- MAGIC %md
 -- MAGIC テーブルを削除しましょう。
