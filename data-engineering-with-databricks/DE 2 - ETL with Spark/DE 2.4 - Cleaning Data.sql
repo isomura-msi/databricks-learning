@@ -61,6 +61,10 @@
 
 -- COMMAND ----------
 
+SELECT * FROM users_dirty LIMIT 2
+
+-- COMMAND ----------
+
 SELECT count(*), count(user_id), count(user_first_touch_timestamp), count(email), count(updated)
 FROM users_dirty
 
@@ -85,6 +89,10 @@ FROM users_dirty
 -- COMMAND ----------
 
 SELECT count_if(email IS NULL) FROM users_dirty;
+
+
+-- COMMAND ----------
+
 SELECT count(*) FROM users_dirty WHERE email IS NULL;
 
 -- COMMAND ----------
@@ -93,8 +101,25 @@ SELECT count(*) FROM users_dirty WHERE email IS NULL;
 -- MAGIC from pyspark.sql.functions import col
 -- MAGIC usersDF = spark.read.table("users_dirty")
 -- MAGIC
--- MAGIC usersDF.selectExpr("count_if(email IS NULL)")
--- MAGIC usersDF.where(col("email").isNull()).count()
+-- MAGIC result_df = usersDF.selectExpr("count_if(email IS NULL)")
+
+-- COMMAND ----------
+
+-- MAGIC %python
+-- MAGIC display(result_df)
+
+-- COMMAND ----------
+
+-- MAGIC %python 
+-- MAGIC from pyspark.sql.functions import col
+-- MAGIC usersDF = spark.read.table("users_dirty")
+-- MAGIC
+-- MAGIC result_df2 = usersDF.where(col("email").isNull()).count()
+
+-- COMMAND ----------
+
+-- MAGIC %python
+-- MAGIC display(result_df2)
 
 -- COMMAND ----------
 
@@ -134,6 +159,10 @@ WHERE user_id IS NOT NULL
 GROUP BY user_id, user_first_touch_timestamp;
 
 SELECT count(*) FROM deduped_users
+
+-- 986 --> 917
+
+-- email を max しかけていて無理やり集計している。本番では、updated により sort して、一番新しいものを取るなどをするべき。
 
 -- COMMAND ----------
 
@@ -235,6 +264,7 @@ SELECT max(user_id_count) <= 1 at_most_one_id FROM (
 
 -- COMMAND ----------
 
+-- micro sec ---> sec
 SELECT *, 
   date_format(first_touch, "MMM d, yyyy") AS first_touch_date,
   date_format(first_touch, "HH:mm:ss") AS first_touch_time,
