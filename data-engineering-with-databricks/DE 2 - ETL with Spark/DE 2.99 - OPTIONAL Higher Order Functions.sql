@@ -61,9 +61,10 @@
 SELECT * FROM (
   SELECT
     order_id,
+    items,
     FILTER (items, i -> i.item_id LIKE "%K") AS king_items
   FROM sales)
-WHERE size(king_items) > 0
+WHERE size(items) > 1 and size(king_items) > 0
 
 -- COMMAND ----------
 
@@ -78,11 +79,12 @@ WHERE size(king_items) > 0
 
 -- COMMAND ----------
 
-SELECT *,
+SELECT items,
   TRANSFORM (
     items, i -> CAST(i.item_revenue_in_usd * 100 AS INT)
   ) AS item_revenues
 FROM sales
+where size(items) > 1
 
 -- COMMAND ----------
 
@@ -112,10 +114,17 @@ FROM sales
 -- COMMAND ----------
 
 -- TODO
+-- CREATE OR REPLACE TABLE sales_product_flags AS
+-- <FILL_IN>
+-- EXISTS <FILL_IN>.item_name LIKE "%Mattress"
+-- EXISTS <FILL_IN>.item_name LIKE "%Pillow"
+
 CREATE OR REPLACE TABLE sales_product_flags AS
-<FILL_IN>
-EXISTS <FILL_IN>.item_name LIKE "%Mattress"
-EXISTS <FILL_IN>.item_name LIKE "%Pillow"
+SELECT
+  items,
+  EXISTS (items, i -> i.item_name LIKE "%Mattress") AS mattress,
+  EXISTS (items, i -> i.item_name LIKE "%Pillow") AS pillow
+FROM sales
 
 -- COMMAND ----------
 

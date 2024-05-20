@@ -91,6 +91,13 @@ display(sales_df.select(first_letter_udf(col("email"))))
 
 # COMMAND ----------
 
+# MAGIC %sql
+# MAGIC select first_letter_udf("test")
+# MAGIC
+# MAGIC -- Python UDF は SQL から使えない。
+
+# COMMAND ----------
+
 # DBTITLE 0,--i18n-26f93012-a994-4b6a-985e-01720dbecc25
 # MAGIC %md
 # MAGIC ### デコレーター構文を使用する (Python のみ)
