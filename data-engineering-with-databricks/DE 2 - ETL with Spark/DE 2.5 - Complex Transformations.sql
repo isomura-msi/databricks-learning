@@ -50,6 +50,10 @@
 
 -- COMMAND ----------
 
+select * from events_raw limit 1
+
+-- COMMAND ----------
+
 CREATE OR REPLACE TEMP VIEW events_strings AS 
 SELECT string(key), string(value) FROM events_raw;
 
@@ -169,6 +173,11 @@ SELECT * FROM exploded_events WHERE size(items) > 2
 
 -- COMMAND ----------
 
+-- MAGIC %python
+-- MAGIC exploded_eventsDF
+
+-- COMMAND ----------
+
 DESCRIBE exploded_events
 
 -- COMMAND ----------
@@ -184,6 +193,8 @@ DESCRIBE exploded_events
 
 SELECT user_id,
   collect_set(event_name) AS event_history,
+  collect_set(items.item_id) as cs,
+  flatten(collect_set(items.item_id)) as fl,
   array_distinct(flatten(collect_set(items.item_id))) AS cart_history
 FROM exploded_events
 GROUP BY user_id
@@ -255,6 +266,31 @@ SELECT * FROM item_purchases
 
 -- COMMAND ----------
 
+select email, item_id,item.quantity from item_purchases
+
+-- COMMAND ----------
+
+select * from (
+  select email, item_id,item.quantity as q from item_purchases
+)
+PIVOT (
+  sum(q) FOR item_id IN (
+    'P_FOAM_K',
+    'M_STAN_Q',
+    'P_FOAM_S',
+    'M_PREM_Q',
+    'M_STAN_F',
+    'M_STAN_T',
+    'M_PREM_K',
+    'M_PREM_F',
+    'M_STAN_K',
+    'M_PREM_T',
+    'P_DOWN_S',
+    'P_DOWN_K')
+)
+
+-- COMMAND ----------
+
 SELECT *
 FROM item_purchases
 PIVOT (
@@ -272,6 +308,8 @@ PIVOT (
     'P_DOWN_S',
     'P_DOWN_K')
 )
+
+-- FOR に指定していない item_id 以外のデータで groupby している。あまり集計している意味がない（講師談）。
 
 -- COMMAND ----------
 
