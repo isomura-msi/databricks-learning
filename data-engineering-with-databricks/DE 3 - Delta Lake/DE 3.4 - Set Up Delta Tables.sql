@@ -302,6 +302,12 @@ DESCRIBE EXTENDED users_pii
 
 -- COMMAND ----------
 
+-- MAGIC %python 
+-- MAGIC files = dbutils.fs.ls(f"{DA.paths.working_dir}/tmp/users_pii/first_touch_date=2020-06-15/")
+-- MAGIC display(files)
+
+-- COMMAND ----------
+
 -- DBTITLE 0,--i18n-d188161b-3bc6-4095-aec9-508c09c14e0c
 -- MAGIC %md
 -- MAGIC ## Delta Lakeテーブルの複製（Cloning Delta Lake Tables）

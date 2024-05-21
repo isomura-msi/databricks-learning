@@ -70,6 +70,15 @@ DESCRIBE HISTORY events
 
 -- COMMAND ----------
 
+CREATE OR REPLACE TABLE events AS
+SELECT * FROM parquet.`${da.paths.datasets}/ecommerce/raw/events-historical`
+
+-- COMMAND ----------
+
+DESCRIBE HISTORY events
+
+-- COMMAND ----------
+
 -- DBTITLE 0,--i18n-bb68d513-240c-41e1-902c-3c3add9c0a75
 -- MAGIC %md
 -- MAGIC **`INSERT OVERWRITE`** では、ほとんど同じ結果を得られます。ターゲットテーブルのデータがクエリのデータに置き換えられます。
@@ -97,6 +106,15 @@ DESCRIBE HISTORY sales
 
 -- COMMAND ----------
 
+INSERT OVERWRITE sales
+SELECT * FROM parquet.`${da.paths.datasets}/ecommerce/raw/sales-historical/`
+
+-- COMMAND ----------
+
+DESCRIBE HISTORY sales
+
+-- COMMAND ----------
+
 -- DBTITLE 0,--i18n-40769b04-c72b-4740-9d27-ea2d1b8700f3
 -- MAGIC %md
 -- MAGIC ここでの主な違いは、Delta Lakeが書き込み時にスキーマを強制する方法に関係しています。
@@ -107,8 +125,8 @@ DESCRIBE HISTORY sales
 
 -- COMMAND ----------
 
--- INSERT OVERWRITE sales
--- SELECT *, current_timestamp() FROM parquet.`${da.paths.datasets}/ecommerce/raw/sales-historical`
+INSERT OVERWRITE sales
+SELECT *, current_timestamp() FROM parquet.`${da.paths.datasets}/ecommerce/raw/sales-historical`
 
 -- COMMAND ----------
 
@@ -225,6 +243,19 @@ WHEN NOT MATCHED AND b.traffic_source = 'email' THEN
 COPY INTO sales
 FROM "${da.paths.datasets}/ecommerce/raw/sales-30m"
 FILEFORMAT = PARQUET
+
+-- COMMAND ----------
+
+-- MAGIC %python
+-- MAGIC display(dbutils.fs.ls(f"{DA.paths.datasets}/ecommerce/raw/sales-30m"))
+
+-- COMMAND ----------
+
+desc extended sales
+
+-- COMMAND ----------
+
+desc detail sales
 
 -- COMMAND ----------
 
