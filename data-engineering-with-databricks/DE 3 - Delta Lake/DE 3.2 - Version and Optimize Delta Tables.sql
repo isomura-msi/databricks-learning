@@ -114,6 +114,10 @@ DESCRIBE DETAIL students
 
 -- COMMAND ----------
 
+select * from students
+
+-- COMMAND ----------
+
 -- DBTITLE 0,--i18n-fd7b24fa-7a2d-4f31-ab7c-fcc28d617d75
 -- MAGIC %md
 -- MAGIC **`Location`** 項目に注意してください。
@@ -315,7 +319,7 @@ RESTORE TABLE students TO VERSION AS OF 8
 
 -- COMMAND ----------
 
--- VACUUM students RETAIN 0 HOURS
+VACUUM students RETAIN 0 HOURS
 
 -- COMMAND ----------
 
@@ -358,6 +362,10 @@ VACUUM students RETAIN 0 HOURS
 
 -- MAGIC %python
 -- MAGIC display(dbutils.fs.ls(f"{DA.paths.user_db}/students"))
+
+-- COMMAND ----------
+
+DESC HISTORY students
 
 -- COMMAND ----------
 

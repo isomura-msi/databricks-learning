@@ -101,7 +101,8 @@ WHEN NOT MATCHED AND b.delicious = true THEN
 -- COMMAND ----------
 
 -- TODO
-<FILL-IN>
+-- <FILL-IN>
+DESC HISTORY beans
 
 -- COMMAND ----------
 
@@ -146,6 +147,14 @@ SELECT * FROM beans VERSION AS OF 1
 
 -- COMMAND ----------
 
+select * from beans version as of 2
+
+-- COMMAND ----------
+
+select * from beans version as of 5
+
+-- COMMAND ----------
+
 -- DBTITLE 0,--i18n-90e3c115-6bed-4b83-bb37-dd45fb92aec5
 -- MAGIC %md
 -- MAGIC そして今度は、データの現在の状態を確認します。
@@ -165,8 +174,11 @@ SELECT * FROM beans
 -- COMMAND ----------
 
 -- TODO
+-- CREATE OR REPLACE TEMP VIEW pre_delete_vw AS
+-- <FILL-IN>
+
 CREATE OR REPLACE TEMP VIEW pre_delete_vw AS
-<FILL-IN>
+select * from beans version as of 4
 
 -- COMMAND ----------
 
@@ -198,7 +210,9 @@ SELECT * FROM pre_delete_vw
 -- COMMAND ----------
 
 -- TODO
-<FILL-IN>
+-- <FILL-IN>
+
+RESTORE TABLE beans TO VERSION AS OF 5
 
 -- COMMAND ----------
 
@@ -231,7 +245,10 @@ DESCRIBE HISTORY beans
 -- COMMAND ----------
 
 -- TODO
-<FILL-IN>
+-- <FILL-IN>
+
+OPTIMIZE beans
+ZORDER BY name
 
 -- COMMAND ----------
 
@@ -255,6 +272,10 @@ DESCRIBE DETAIL beans
 -- MAGIC last_tx = spark.sql("DESCRIBE HISTORY beans").first()
 -- MAGIC assert last_tx["operation"] == "OPTIMIZE", "Make sure you used the `OPTIMIZE` command to perform file compaction"
 -- MAGIC assert last_tx["operationParameters"]["zOrderBy"] == '["name"]', "Use `ZORDER BY name` with your optimize command to index your table"
+
+-- COMMAND ----------
+
+desc history beans
 
 -- COMMAND ----------
 
@@ -346,7 +367,7 @@ SELECT * FROM beans
 
 -- COMMAND ----------
 
--- SELECT * FROM beans@v1
+SELECT * FROM beans@v1
 
 -- COMMAND ----------
 
