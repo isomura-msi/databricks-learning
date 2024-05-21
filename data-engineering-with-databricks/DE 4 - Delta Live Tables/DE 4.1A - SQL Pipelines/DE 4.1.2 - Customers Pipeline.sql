@@ -96,7 +96,7 @@ FROM cloud_files("${source}/customers", "json")
 CREATE STREAMING LIVE TABLE customers_bronze_clean
 (CONSTRAINT valid_id EXPECT (customer_id IS NOT NULL) ON VIOLATION FAIL UPDATE,
 CONSTRAINT valid_operation EXPECT (operation IS NOT NULL) ON VIOLATION DROP ROW,
-CONSTRAINT valid_name EXPECT (name IS NOT NULL or operation = "DELETE"),
+CONSTRAINT valid_name EXPECT (name IS NOT NULL or operation = "DELETE"), -- on violation 未指定。件数をカウントするのみ。
 CONSTRAINT valid_address EXPECT (
   (address IS NOT NULL and 
   city IS NOT NULL and 
@@ -143,7 +143,7 @@ APPLY CHANGES INTO LIVE.customers_silver
   FROM STREAM(LIVE.customers_bronze_clean)
   KEYS (customer_id)
   APPLY AS DELETE WHEN operation = "DELETE"
-  SEQUENCE BY timestamp
+  SEQUENCE BY timestamp -- operation の適用順序を決めるカラムを指定する
   COLUMNS * EXCEPT (operation, source_file, _rescued_data)
 
 -- COMMAND ----------

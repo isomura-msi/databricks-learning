@@ -60,6 +60,8 @@ print(f"Latest Update ID: {latest_update_id}")
 # Push back into the spark config so that we can use it in a later query.
 spark.conf.set('latest_update.id', latest_update_id)
 
+# 最新のDLT上の実行ID ↓
+
 # COMMAND ----------
 
 # DBTITLE 0,--i18n-de7c7817-fcfd-4994-beb0-704099bd5c30
