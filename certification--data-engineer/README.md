@@ -154,6 +154,7 @@
 - [ ] MERGE コマンドのメリットを説明する。
 
 - [ ] COPY INTO ステートメントではターゲットテーブルのデータの重複が排除されない理由を特定する。
+      - https://docs.databricks.com/ja/ingestion/index.html#ingest-data-into-a-databricks-lakehouse
 
 - [ ] COPY INTO を使用すべきシナリオを特定する既存の文字列列から特定のパターンを抽出する。
 

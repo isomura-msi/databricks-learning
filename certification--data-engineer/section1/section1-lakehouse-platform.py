@@ -184,6 +184,24 @@
 # COMMAND ----------
 
 # MAGIC %md
+# MAGIC ## ● Databricks Runtime を使用したクラスターソフトウェアのバージョン管理方法を特定する。
+# MAGIC
+# MAGIC ### ○ 
+# MAGIC
+# MAGIC ### ○ セミナーでの説明（汚いメモ）を補足として追記
+# MAGIC ```
+# MAGIC
+# MAGIC ```
+# MAGIC
+# MAGIC
+# MAGIC ### ○ 参考記事
+# MAGIC - XXX
+# MAGIC   - https://
+# MAGIC
+
+# COMMAND ----------
+
+# MAGIC %md
 # MAGIC ## ● 
 # MAGIC
 # MAGIC ### ○ 
