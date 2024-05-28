@@ -450,6 +450,60 @@ dbutils.data.summarize(df_event_001)
 # COMMAND ----------
 
 # MAGIC %md
+# MAGIC ## ● 外部ソースからのテーブルが Delta Lake テーブルでないことを特定する。
+# MAGIC
+# MAGIC ### 概要
+# MAGIC Databricksを使用してデータ管理を行う際、外部ソースからテーブルをインポートすることがある。これらのテーブルが必ずしもDelta Lake形式であるとは限らない。本稿では、外部ソースからのテーブルがDelta Lakeテーブルでないことに関する情報を整理する。
+# MAGIC
+# MAGIC ### 外部ソースからのテーブル
+# MAGIC 外部ソースからインポートされるテーブルは、多岐にわたるデータフォーマットを持つ場合がある。以下はその主要な例である。
+# MAGIC
+# MAGIC - **CSV（Comma-Separated Values）**: 一般的なテキストベースのデータフォーマット。各レコードがコンマで区切られた値として表現される。
+# MAGIC - **Parquet**: 高効率の列指向ストレージフォーマット。大規模なデータ分析処理に適している。
+# MAGIC - **JSON**: データ交換フォーマットとして広く使われている。構造化データを容易に表現できる。
+# MAGIC - **Avro**: Apacheプロジェクトの一環で、スキーマ記述言語に基づくデータシリアライズのためのフォーマット。
+# MAGIC - **ORC（Optimized Row Columnar）**: Hadoopエコシステムで利用されるフォーマット。効率的な圧縮とクエリ性能を提供する。
+# MAGIC
+# MAGIC ### Delta Lakeテーブルとは
+# MAGIC Delta Lakeは、Apache Sparkの拡張として開発されたストレージレイヤーであり、次の特徴を持つ。
+# MAGIC
+# MAGIC - **ACIDトランザクション**: データの一貫性と耐障害性を確保するためのトランザクション管理を提供。
+# MAGIC - **スキーマエンフォースメント**: データのスキーマが変更されると、エラーを検出して防ぐ機能。
+# MAGIC - **スキーマエボリューション**: 新しいデータのスキーマを柔軟に進化させる機能。
+# MAGIC - **高パフォーマンス**: キャッシュやインデックスの利用によりクエリ性能を向上させる。
+# MAGIC
+# MAGIC Delta Lakeテーブルは、これらの特徴を持たない他の外部ソースフォーマットと対照的である。
+# MAGIC
+# MAGIC ### 外部ソースからDelta Lakeへ変換する必要性
+# MAGIC 外部ソースからのテーブルがDelta Lakeでない場合、次の理由からDelta Lakeテーブルへの変換が推奨される。
+# MAGIC
+# MAGIC - **データの一貫性と信頼性向上**: ACIDトランザクションによる。
+# MAGIC - **データの管理とクエリ性能向上**: 高効率なストレージとクエリ処理。
+# MAGIC - **スキーマ管理の容易化**: スキーマエンフォースメントとスキーマエボリューション機能。
+# MAGIC
+# MAGIC ### 変換方法の例
+# MAGIC 外部ソースからのテーブルをDelta Lakeフォーマットに変換する方法は、多様であるが、以下に典型的な手法を示す。
+# MAGIC
+# MAGIC - **CSVからの変換**
+# MAGIC     ```python
+# MAGIC     df = spark.read.csv("path/to/csv/file")
+# MAGIC     df.write.format("delta").save("path/to/delta/table")
+# MAGIC     ```
+# MAGIC
+# MAGIC - **Parquetからの変換**
+# MAGIC     ```python
+# MAGIC     df = spark.read.parquet("path/to/parquet/file")
+# MAGIC     df.write.format("delta").save("path/to/delta/table")
+# MAGIC     ```
+# MAGIC
+# MAGIC これにより、外部ソースから提供されたデータがDelta Lakeテーブルとして活用可能になる。
+# MAGIC
+# MAGIC ### まとめ
+# MAGIC 外部ソースからのテーブルは必ずしもDelta Lakeテーブルではないことが多くのケースである。Delta Lakeの特長を活かすために、外部ソースからのデータをDelta Lake形式に変換することが推奨される。多種多様なデータフォーマットに対応した変換手法を活用することで、データの一貫性、クエリ性能、管理の容易さが向上する。
+
+# COMMAND ----------
+
+# MAGIC %md
 # MAGIC ## ● 未整理
 
 # COMMAND ----------
