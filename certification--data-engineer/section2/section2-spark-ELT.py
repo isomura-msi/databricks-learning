@@ -297,6 +297,17 @@ df.show()
 
 # MAGIC %md
 # MAGIC ### ○ ビュー
+# MAGIC
+# MAGIC 一般的なViewは、データベースに定義される永続的なビューである。これにより、基礎となるテーブルに対して論理的なビューを提供し、アクセス制御やデータの抽象化を行うことができる。ビューはデータベース内に永続的に保存され、再利用可能である。
+# MAGIC
+# MAGIC ```sql
+# MAGIC -- 永続的なViewの作成
+# MAGIC CREATE OR REPLACE VIEW persistent_view AS
+# MAGIC SELECT * FROM some_table
+# MAGIC ```
+# MAGIC
+# MAGIC このビューは、データの抽象化や再利用性を高め、特定のユーザーやアプリケーションに対してデータの論理的な視点を提供する。
+# MAGIC
 
 # COMMAND ----------
 
@@ -326,6 +337,18 @@ dbutils.data.summarize(df_event_001)
 
 # MAGIC %md
 # MAGIC ### ○ 一時ビュー
+# MAGIC
+# MAGIC
+# MAGIC Temporary View（一時ビュー）は、セッションの間だけ存在する一時的なビューである。これにより、セッションが終了するとビューも消滅する。一時ビューは、特定のユーザーやセッションに対してデータの一時的な抽象化を提供する。
+# MAGIC
+# MAGIC ```sql
+# MAGIC -- Temporary Viewの作成
+# MAGIC CREATE OR REPLACE TEMP VIEW temp_view AS
+# MAGIC SELECT * FROM some_table
+# MAGIC ```
+# MAGIC
+# MAGIC このビューは、ユーザーが特定のセッション内でデータを簡単に操作するために利用される。通常、ユニティカタログ（UC）に定義するほどの重要度はない。
+# MAGIC
 
 # COMMAND ----------
 
@@ -391,6 +414,38 @@ dbutils.data.summarize(df_event_001)
 # MAGIC     )
 # MAGIC     SELECT * FROM EmployeeHierarchy
 # MAGIC     ```
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC ### ○ 他の View
+# MAGIC
+# MAGIC Databricksでは、SQLクエリの結果を保存・再利用するためにビュー(View)が利用される。ビューは、基礎となるデータに対して仮想的なテーブルを作成し、データの抽象化やアクセス制御を容易にする。
+# MAGIC
+# MAGIC #### Global Temporary View
+# MAGIC
+# MAGIC Global Temporary View（グローバル一時ビュー）は、Databricksクラスタ全体で共有される一時ビューである。ビューは`global_temp`データベースに格納され、クラスタ内のすべてのセッションでアクセス可能である。ただし、クラスタのライフサイクルに依存するため、クラスタがシャットダウンされるとビューも消失する。
+# MAGIC
+# MAGIC ```sql
+# MAGIC -- Global Temporary Viewの作成
+# MAGIC CREATE OR REPLACE GLOBAL TEMP VIEW global_temp_view AS
+# MAGIC SELECT * FROM some_table
+# MAGIC ```
+# MAGIC
+# MAGIC このビューは、複数のセッション間で一時的にデータを共有するために使用される。
+# MAGIC
+# MAGIC #### Materialized View
+# MAGIC
+# MAGIC Materialized View（マテリアライズドビュー）は、定期的に更新される結果をキャッシュするビューである。これにより、クエリのパフォーマンスが向上する。Materialized Viewは、基礎となるデータのスナップショットを保持し、アクセス時にクエリの実行を避けるため、特に大規模データセットに対して有効である。
+# MAGIC
+# MAGIC ```sql
+# MAGIC -- Materialized Viewの作成
+# MAGIC CREATE MATERIALIZED VIEW materialized_view AS
+# MAGIC SELECT * FROM some_table
+# MAGIC ```
+# MAGIC
+# MAGIC マテリアライズドビューは、データの更新頻度とクエリのパフォーマンス要件に応じて定期的にリフレッシュされる。
+# MAGIC
 
 # COMMAND ----------
 
