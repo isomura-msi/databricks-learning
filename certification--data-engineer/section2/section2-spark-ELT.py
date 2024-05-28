@@ -504,6 +504,65 @@ dbutils.data.summarize(df_event_001)
 # COMMAND ----------
 
 # MAGIC %md
+# MAGIC ## ● JDBC 接続と外部 CSV ファイルからテーブルを作成する
+# MAGIC
+# MAGIC - 参考
+# MAGIC   - https://spark.apache.org/docs/latest/sql-data-sources-jdbc.html
+# MAGIC
+# MAGIC ### 概要
+# MAGIC Databricksを用いる環境でデータレイクやデータウェアハウスの一部として動作させる際に、多様なデータソースからのデータインジェストが求められることが多い。この記事では、JDBC接続と外部CSVファイルを用いてテーブルを作成する方法について詳述する。
+# MAGIC
+# MAGIC ### JDBC 接続からテーブルを作成する
+# MAGIC
+# MAGIC #### JDBC接続とは
+# MAGIC JDBC（Java Database Connectivity）は、Javaプログラムからデータベースに接続し、SQLクエリを実行するためのAPIである。Databricksでは多様なデータベース（MySQL、PostgreSQL、SQL Serverなど）に対してJDBCを介して接続することが可能である。
+# MAGIC
+# MAGIC #### JDBC接続の手順
+# MAGIC 1. **JDBCドライバの設定**
+# MAGIC     - 接続先のデータベースに対応するJDBCドライバを準備し、Databricksクラスタにアップロードしなければならない。
+# MAGIC
+# MAGIC 2. **接続プロパティの設定**
+# MAGIC     - 接続するためのプロパティ（URL、ユーザー名、パスワードなど）を定義する。
+# MAGIC     ```python
+# MAGIC     jdbc_url = "jdbc:mysql://your-database-url:3306/your-database-name"
+# MAGIC     connection_properties = {
+# MAGIC         "user" : "your-username",
+# MAGIC         "password" : "your-password",
+# MAGIC         "driver" : "com.mysql.jdbc.Driver"
+# MAGIC     }
+# MAGIC     ```
+# MAGIC
+# MAGIC 3. **データの読み込みおよびテーブルの作成**
+# MAGIC     - JDBC接続を通じてデータベースからデータを読み込み、それをDatabricksのテーブルとして保存する。
+# MAGIC     ```python
+# MAGIC     df = spark.read.jdbc(jdbc_url, "your-table-name", properties=connection_properties)
+# MAGIC     df.createOrReplaceTempView("your_temp_table_name")
+# MAGIC     ```
+# MAGIC
+# MAGIC ### 外部CSVファイルからテーブルを作成する
+# MAGIC
+# MAGIC #### CSVファイルとは
+# MAGIC CSV（Comma-Separated Values）ファイルは、一般的なテキストデータフォーマットである。各レコードは行単位で記載され、各フィールドはコンマで区切られている。データエクスチェンジの際によく用いられる形式である。
+# MAGIC
+# MAGIC #### CSVファイルからテーブル作成の手順
+# MAGIC 1. **CSVファイルの読込み**
+# MAGIC     - 外部CSVファイルをDatabricksの環境に読み込み、DataFrameを作成する。
+# MAGIC     ```python
+# MAGIC     df = spark.read.csv("path/to/csv/file.csv", header=True, inferSchema=True)
+# MAGIC     ```
+# MAGIC
+# MAGIC 2. **テーブルの作成**
+# MAGIC     - 読み込んだDataFrameを利用して、Databricks内のテーブルを作成する。
+# MAGIC     ```python
+# MAGIC     df.createOrReplaceTempView("csv_temp_table")
+# MAGIC     ```
+# MAGIC
+# MAGIC ## 結論
+# MAGIC Databricksでは、JDBC接続や外部CSVファイルを利用して容易にデータをインジェストし、テーブルを作成することができる。これにより、多様なデータソースを集約し、一元的に管理するデータレイクやデータウェアハウスの構築が容易になる。各手法の手順に従って適切に設定することで、信頼性の高いデータ管理環境を実現できる。
+
+# COMMAND ----------
+
+# MAGIC %md
 # MAGIC ## ● 未整理
 
 # COMMAND ----------
