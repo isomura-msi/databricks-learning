@@ -47,7 +47,7 @@ print(DA)
 
 # COMMAND ----------
 
-print(DA.paths:)
+print(DA.paths)
 
 # COMMAND ----------
 
@@ -86,7 +86,7 @@ dbutils.help()
 # MAGIC %md
 # MAGIC ### ○ Python でデータ抽出
 # MAGIC
-# MAGIC DatabricksにおけるSpark SQLの`SELECT * FROM json.\`${DA.paths.kafka_events}/001.json\``と同等の操作をPythonで行う場合、`spark.read.json`を使用します。この関数は、指定されたJSONファイルを読み込み、データフレームとして返します。
+# MAGIC DatabricksにおけるSpark SQLの```SELECT * FROM json.`${DA.paths.kafka_events}/001.json` ``` と同等の操作をPythonで行う場合、`spark.read.json`を使用します。この関数は、指定されたJSONファイルを読み込み、データフレームとして返します。
 # MAGIC
 # MAGIC 以下に、Pythonコードの具体例を示します。
 # MAGIC
@@ -329,6 +329,12 @@ dbutils.data.summarize(_sqldf)
 
 # COMMAND ----------
 
+# MAGIC %sql
+# MAGIC CREATE OR REPLACE VIEW event_view_001
+# MAGIC AS SELECT * FROM json.`${DA.paths.kafka_events}/001.json`
+
+# COMMAND ----------
+
 df_event_001 = _sqldf
 print(df_event_001)
 dbutils.data.summarize(df_event_001)
@@ -523,21 +529,21 @@ dbutils.data.summarize(df_event_001)
 # MAGIC
 # MAGIC 2. **接続プロパティの設定**
 # MAGIC     - 接続するためのプロパティ（URL、ユーザー名、パスワードなど）を定義する。
-# MAGIC     ```python
-# MAGIC     jdbc_url = "jdbc:mysql://your-database-url:3306/your-database-name"
-# MAGIC     connection_properties = {
-# MAGIC         "user" : "your-username",
-# MAGIC         "password" : "your-password",
-# MAGIC         "driver" : "com.mysql.jdbc.Driver"
-# MAGIC     }
-# MAGIC     ```
+# MAGIC       ```python
+# MAGIC       jdbc_url = "jdbc:mysql://your-database-url:3306/your-database-name"
+# MAGIC       connection_properties = {
+# MAGIC           "user" : "your-username",
+# MAGIC           "password" : "your-password",
+# MAGIC           "driver" : "com.mysql.jdbc.Driver"
+# MAGIC       }
+# MAGIC       ```
 # MAGIC
 # MAGIC 3. **データの読み込みおよびテーブルの作成**
 # MAGIC     - JDBC接続を通じてデータベースからデータを読み込み、それをDatabricksのテーブルとして保存する。
-# MAGIC     ```python
-# MAGIC     df = spark.read.jdbc(jdbc_url, "your-table-name", properties=connection_properties)
-# MAGIC     df.createOrReplaceTempView("your_temp_table_name")
-# MAGIC     ```
+# MAGIC       ```python
+# MAGIC       df = spark.read.jdbc(jdbc_url, "your-table-name", properties=connection_properties)
+# MAGIC       df.createOrReplaceTempView("your_temp_table_name")
+# MAGIC       ```
 # MAGIC
 # MAGIC ### 外部CSVファイルからテーブルを作成する
 # MAGIC
@@ -547,15 +553,15 @@ dbutils.data.summarize(df_event_001)
 # MAGIC #### CSVファイルからテーブル作成の手順
 # MAGIC 1. **CSVファイルの読込み**
 # MAGIC     - 外部CSVファイルをDatabricksの環境に読み込み、DataFrameを作成する。
-# MAGIC     ```python
-# MAGIC     df = spark.read.csv("path/to/csv/file.csv", header=True, inferSchema=True)
-# MAGIC     ```
+# MAGIC       ```python
+# MAGIC       df = spark.read.csv("path/to/csv/file.csv", header=True, inferSchema=True)
+# MAGIC       ```
 # MAGIC
 # MAGIC 2. **テーブルの作成**
 # MAGIC     - 読み込んだDataFrameを利用して、Databricks内のテーブルを作成する。
-# MAGIC     ```python
-# MAGIC     df.createOrReplaceTempView("csv_temp_table")
-# MAGIC     ```
+# MAGIC       ```python
+# MAGIC       df.createOrReplaceTempView("csv_temp_table")
+# MAGIC       ```
 # MAGIC
 # MAGIC ## 結論
 # MAGIC Databricksでは、JDBC接続や外部CSVファイルを利用して容易にデータをインジェストし、テーブルを作成することができる。これにより、多様なデータソースを集約し、一元的に管理するデータレイクやデータウェアハウスの構築が容易になる。各手法の手順に従って適切に設定することで、信頼性の高いデータ管理環境を実現できる。
