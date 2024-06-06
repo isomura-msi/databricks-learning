@@ -965,6 +965,103 @@ deduplicated_df.show()
 # COMMAND ----------
 
 # MAGIC %md
+# MAGIC ### 重複する行の識別と削除
+# MAGIC
+# MAGIC 重複行を削除するためには、特定の列を基準にして各行を唯一のものとして識別する。これにより、任意の条件に基づいて重複行を削除し、新しいテーブルを作成することができる。主に`ROW_NUMBER`ウィンドウ関数を使用する。
+# MAGIC
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC #### SQL
+# MAGIC
+# MAGIC 次の例では、`email`列を基準に重複行を識別し、最新のレコード（`updated`列基準）を残して重複行を削除する方法を示す。
+# MAGIC
+# MAGIC ```sql
+# MAGIC -- 一時ビューの作成
+# MAGIC CREATE OR REPLACE TEMP VIEW ranked_users AS
+# MAGIC WITH ranked AS (
+# MAGIC     SELECT 
+# MAGIC         *, 
+# MAGIC         ROW_NUMBER() OVER (PARTITION BY email ORDER BY updated DESC) AS row_num
+# MAGIC     FROM users
+# MAGIC )
+# MAGIC SELECT *
+# MAGIC FROM ranked
+# MAGIC WHERE row_num = 1;
+# MAGIC
+# MAGIC -- 一時ビューから新しいテーブルを作成
+# MAGIC CREATE OR REPLACE TABLE deduplicated_users AS
+# MAGIC SELECT *
+# MAGIC FROM ranked_users;
+# MAGIC ```
+# MAGIC
+# MAGIC このクエリでは以下のステップを行っている：
+# MAGIC
+# MAGIC 1. `WITH`句を使用して共通テーブル式`ranked`を定義し、`ROW_NUMBER`関数を用いて各`email`ごとに最新の行を識別する。
+# MAGIC 2. 重複行をフィルタリングし、一意の行のみを含む一時ビュー`ranked_users`を作成。
+# MAGIC 3. 一時ビュー`ranked_users`から新しいテーブル`deduplicated_users`を作成。
+# MAGIC
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC #### Python
+# MAGIC
+# MAGIC 次のコードは、PySparkを使用して同様の処理を行う方法を示す。
+# MAGIC
+# MAGIC ```python
+# MAGIC from pyspark.sql import SparkSession
+# MAGIC from pyspark.sql.window import Window
+# MAGIC from pyspark.sql.functions import row_number
+# MAGIC
+# MAGIC # Sparkセッションの作成
+# MAGIC spark = SparkSession.builder \
+# MAGIC     .appName("Remove Duplicates from Delta Table") \
+# MAGIC     .getOrCreate()
+# MAGIC
+# MAGIC # Deltaテーブルの読み込み
+# MAGIC df = spark.read.format("delta").load("/path/to/users")
+# MAGIC
+# MAGIC # ウィンドウ定義
+# MAGIC window_spec = Window.partitionBy("email").orderBy(col("updated").desc())
+# MAGIC
+# MAGIC # ROW_NUMBER関数の適用
+# MAGIC df_with_row_num = df.withColumn("row_num", row_number().over(window_spec))
+# MAGIC
+# MAGIC # row_numが1の行のみを保持
+# MAGIC deduplicated_df = df_with_row_num.filter(df_with_row_num.row_num == 1).drop("row_num")
+# MAGIC
+# MAGIC # 新しいDeltaテーブルとして保存
+# MAGIC deduplicated_df.write.format("delta").mode("overwrite").save("/path/to/deduplicated_users")
+# MAGIC
+# MAGIC # 結果の表示（任意）
+# MAGIC deduplicated_df.show(truncate=False)
+# MAGIC ```
+# MAGIC
+# MAGIC このコードでは以下の手順を踏んでいる：
+# MAGIC
+# MAGIC 1. **Sparkセッションの作成**: Sparkセッションを初期化。
+# MAGIC 2. **Deltaテーブルの読み込み**: Delta形式で保存されたテーブルを読み込む。
+# MAGIC 3. **ウィンドウ定義**: `Window.partitionBy("email").orderBy(col("updated").desc())`を定義し、`email`でパーティションを分け、`updated`でソート。
+# MAGIC 4. **ROW_NUMBER関数の適用**: `row_number().over(window_spec)`を使用して、各パーティション内で最新の行を識別するための一意の番号を付与。
+# MAGIC 5. **フィルタリングと保存**: `row_num`が1の行のみを保持し、新しいDeltaテーブルとして保存。
+# MAGIC
+# MAGIC 以上の方法により、SQLおよびPython（PySpark）を使用して既存のテーブルから重複する行を削除し、新しいテーブルを作成することができる。各手法はシナリオに応じて使い分けることが推奨される。
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC ## ● 特定の列に基づいて行の重複を排除する。
+
+# COMMAND ----------
+
+# MAGIC %md
 # MAGIC ### GROUP BY を使用した重複排除
 # MAGIC
 # MAGIC `GROUP BY`を使用して重複を排除する場合は、どの列を基準に重複を判定し、その際にどの値を選択するか（最大値、最小値、最新値など）を明確に定義する必要がある。以下に、`email`列を基準に重複行を排除し、`updated`列の最新値を選択する具体例を示す。
@@ -1115,93 +1212,6 @@ dedupedDF = (usersDF
     )
 
 dedupedDF.count()
-
-# COMMAND ----------
-
-# MAGIC %md
-# MAGIC ### 重複する行の識別と削除
-# MAGIC
-# MAGIC 重複行を削除するためには、特定の列を基準にして各行を唯一のものとして識別する。これにより、任意の条件に基づいて重複行を削除し、新しいテーブルを作成することができる。主に`ROW_NUMBER`ウィンドウ関数を使用する。
-# MAGIC
-
-# COMMAND ----------
-
-# MAGIC %md
-# MAGIC #### SQL
-# MAGIC
-# MAGIC 次の例では、`email`列を基準に重複行を識別し、最新のレコード（`updated`列基準）を残して重複行を削除する方法を示す。
-# MAGIC
-# MAGIC ```sql
-# MAGIC -- 一時ビューの作成
-# MAGIC CREATE OR REPLACE TEMP VIEW ranked_users AS
-# MAGIC WITH ranked AS (
-# MAGIC     SELECT 
-# MAGIC         *, 
-# MAGIC         ROW_NUMBER() OVER (PARTITION BY email ORDER BY updated DESC) AS row_num
-# MAGIC     FROM users
-# MAGIC )
-# MAGIC SELECT *
-# MAGIC FROM ranked
-# MAGIC WHERE row_num = 1;
-# MAGIC
-# MAGIC -- 一時ビューから新しいテーブルを作成
-# MAGIC CREATE OR REPLACE TABLE deduplicated_users AS
-# MAGIC SELECT *
-# MAGIC FROM ranked_users;
-# MAGIC ```
-# MAGIC
-# MAGIC このクエリでは以下のステップを行っている：
-# MAGIC
-# MAGIC 1. `WITH`句を使用して共通テーブル式`ranked`を定義し、`ROW_NUMBER`関数を用いて各`email`ごとに最新の行を識別する。
-# MAGIC 2. 重複行をフィルタリングし、一意の行のみを含む一時ビュー`ranked_users`を作成。
-# MAGIC 3. 一時ビュー`ranked_users`から新しいテーブル`deduplicated_users`を作成。
-# MAGIC
-
-# COMMAND ----------
-
-# MAGIC %md
-# MAGIC #### Python
-# MAGIC
-# MAGIC 次のコードは、PySparkを使用して同様の処理を行う方法を示す。
-# MAGIC
-# MAGIC ```python
-# MAGIC from pyspark.sql import SparkSession
-# MAGIC from pyspark.sql.window import Window
-# MAGIC from pyspark.sql.functions import row_number
-# MAGIC
-# MAGIC # Sparkセッションの作成
-# MAGIC spark = SparkSession.builder \
-# MAGIC     .appName("Remove Duplicates from Delta Table") \
-# MAGIC     .getOrCreate()
-# MAGIC
-# MAGIC # Deltaテーブルの読み込み
-# MAGIC df = spark.read.format("delta").load("/path/to/users")
-# MAGIC
-# MAGIC # ウィンドウ定義
-# MAGIC window_spec = Window.partitionBy("email").orderBy(col("updated").desc())
-# MAGIC
-# MAGIC # ROW_NUMBER関数の適用
-# MAGIC df_with_row_num = df.withColumn("row_num", row_number().over(window_spec))
-# MAGIC
-# MAGIC # row_numが1の行のみを保持
-# MAGIC deduplicated_df = df_with_row_num.filter(df_with_row_num.row_num == 1).drop("row_num")
-# MAGIC
-# MAGIC # 新しいDeltaテーブルとして保存
-# MAGIC deduplicated_df.write.format("delta").mode("overwrite").save("/path/to/deduplicated_users")
-# MAGIC
-# MAGIC # 結果の表示（任意）
-# MAGIC deduplicated_df.show(truncate=False)
-# MAGIC ```
-# MAGIC
-# MAGIC このコードでは以下の手順を踏んでいる：
-# MAGIC
-# MAGIC 1. **Sparkセッションの作成**: Sparkセッションを初期化。
-# MAGIC 2. **Deltaテーブルの読み込み**: Delta形式で保存されたテーブルを読み込む。
-# MAGIC 3. **ウィンドウ定義**: `Window.partitionBy("email").orderBy(col("updated").desc())`を定義し、`email`でパーティションを分け、`updated`でソート。
-# MAGIC 4. **ROW_NUMBER関数の適用**: `row_number().over(window_spec)`を使用して、各パーティション内で最新の行を識別するための一意の番号を付与。
-# MAGIC 5. **フィルタリングと保存**: `row_num`が1の行のみを保持し、新しいDeltaテーブルとして保存。
-# MAGIC
-# MAGIC 以上の方法により、SQLおよびPython（PySpark）を使用して既存のテーブルから重複する行を削除し、新しいテーブルを作成することができる。各手法はシナリオに応じて使い分けることが推奨される。
 
 # COMMAND ----------
 
