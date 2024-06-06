@@ -5,6 +5,11 @@
 # COMMAND ----------
 
 # MAGIC %md
+# MAGIC ## ● データ準備（トレーニング時のデータを利用）
+
+# COMMAND ----------
+
+# MAGIC %md
 # MAGIC ## ● 単一のファイルからのデータ抽出と、複数のファイルを含むディレクトリからのデータ抽出を行う
 # MAGIC
 # MAGIC ### ○ 参考記事
@@ -17,6 +22,14 @@
 # COMMAND ----------
 
 # MAGIC %run ./Includes/Classroom-Setup-02.1
+
+# COMMAND ----------
+
+# MAGIC %run ./Includes/Classroom-Setup-02.2
+
+# COMMAND ----------
+
+# MAGIC %run ./Includes/Classroom-Setup-02.4
 
 # COMMAND ----------
 
@@ -238,10 +251,6 @@ df = spark.read.json(f"{DA.paths.kafka_events}")
 # データフレームの内容を表示
 df.show()
 
-
-# COMMAND ----------
-
-# MAGIC %run ./Includes/Classroom-Setup-02.2
 
 # COMMAND ----------
 
@@ -751,6 +760,201 @@ LOCATION "{DA.paths.sales_csv}"
 # MAGIC このクエリでは、`price`列が`NULL`でない製品の数が結果として返される。`count`関数のこの特性により、データのクレンジングや分析が効率的に行える。
 # MAGIC
 # MAGIC 以上の方法を用いることで、Databricksにおいて`NULL`値をスキップして非NULLの値の数をカウントすることが可能である。
+
+# COMMAND ----------
+
+# MAGIC %sql
+# MAGIC SELECT count_if(email IS NULL) FROM users_dirty;
+
+# COMMAND ----------
+
+# MAGIC %sql
+# MAGIC SELECT count(*) FROM users_dirty WHERE email IS NULL;
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC ### Python の例
+
+# COMMAND ----------
+
+from pyspark.sql.functions import col
+usersDF = spark.read.table("users_dirty")
+
+result_df = usersDF.selectExpr("count_if(email IS NULL)")
+display(result_df)
+
+# COMMAND ----------
+
+from pyspark.sql.functions import col
+usersDF = spark.read.table("users_dirty")
+
+result_df2 = usersDF.where(col("email").isNull()).count()
+display(result_df2)
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC ## ● 既存の Delta Lake テーブルから行の重複を排除する方法
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC
+# MAGIC ### Delta Lake における重複排除の基本原理
+# MAGIC
+# MAGIC Delta Lakeにおいて、既存のテーブルから行の重複を排除するためには、`DISTINCT`キーワードや、`ROW_NUMBER`ウィンドウ関数を使用するのが一般的である。これにより、特定の条件に基づいて重複を検出し、不要な行を削除することができる。
+# MAGIC
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC ### DISTINCT キーワードを使用した重複排除
+# MAGIC
+# MAGIC 最も簡単な方法は、`DISTINCT`キーワードを使って重複行を排除することである。以下の例では、`table_name`テーブルから重複行を削除し、結果を新しいテーブル`deduplicated_table_name`に保存する。
+# MAGIC
+# MAGIC ```sql
+# MAGIC CREATE OR REPLACE TABLE deduplicated_table_name AS
+# MAGIC SELECT DISTINCT *
+# MAGIC FROM table_name;
+# MAGIC ```
+# MAGIC
+# MAGIC このクエリは、`table_name`テーブル内の重複行を削除し、重複行のないデータを新しいテーブルに書き込む。
+# MAGIC
+
+# COMMAND ----------
+
+# MAGIC %sql
+# MAGIC SELECT * FROM users_dirty LIMIT 2
+
+# COMMAND ----------
+
+# MAGIC %sql
+# MAGIC SELECT count(*), count(user_id), count(user_first_touch_timestamp), count(email), count(updated)
+# MAGIC FROM users_dirty
+
+# COMMAND ----------
+
+# MAGIC %sql
+# MAGIC SELECT DISTINCT(*) FROM users_dirty
+
+# COMMAND ----------
+
+usersDF = spark.read.table("users_dirty")
+usersDF.distinct().display()
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC ### ROW_NUMBER ウィンドウ関数を使用した詳細な重複排除
+# MAGIC
+# MAGIC より柔軟かつ詳細な重複排除を行うためには、`ROW_NUMBER`ウィンドウ関数を使用する方法がある。特定の列を基準に行の重複を排除する場合、以下のような手順を踏む。
+# MAGIC
+# MAGIC 1. `ROW_NUMBER`関数を用いて、各行に一意の行番号を付与する。
+# MAGIC 2. 行番号が1の行のみを抽出する。
+# MAGIC
+# MAGIC 以下のSQLクエリは、その例である。
+# MAGIC
+# MAGIC ```sql
+# MAGIC WITH ranked_data AS (
+# MAGIC     SELECT *, ROW_NUMBER() OVER (PARTITION BY key_column ORDER BY another_column) AS row_num
+# MAGIC     FROM table_name
+# MAGIC )
+# MAGIC CREATE OR REPLACE TABLE deduplicated_table_name AS
+# MAGIC SELECT *
+# MAGIC FROM ranked_data
+# MAGIC WHERE row_num = 1;
+# MAGIC ```
+# MAGIC
+# MAGIC このクエリでは、`key_column`列を基準に重複を検出し、`another_column`に基づいてソートされた最初の行（`row_num = 1`）のみを抽出している。
+# MAGIC
+
+# COMMAND ----------
+
+# MAGIC %sql
+# MAGIC -- 一時的なビューを作成
+# MAGIC CREATE OR REPLACE TEMP VIEW ranked_users_dirty AS
+# MAGIC WITH ranked AS (
+# MAGIC     SELECT *, ROW_NUMBER() OVER (PARTITION BY email ORDER BY updated) AS row_num
+# MAGIC     FROM users_dirty
+# MAGIC )
+# MAGIC SELECT *
+# MAGIC FROM ranked
+# MAGIC WHERE row_num = 1;
+# MAGIC
+# MAGIC -- 一時的なビューから新しいテーブルを作成
+# MAGIC CREATE OR REPLACE TABLE deduplicated_users_dirty AS
+# MAGIC SELECT *
+# MAGIC FROM ranked_users_dirty;
+
+# COMMAND ----------
+
+# MAGIC %sql
+# MAGIC select count(*) from deduplicated_users_dirty limit 10
+
+# COMMAND ----------
+
+# MAGIC %sql
+# MAGIC select * from deduplicated_users_dirty limit 10
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC #### Python の例
+
+# COMMAND ----------
+
+from pyspark.sql import SparkSession
+from pyspark.sql.window import Window
+from pyspark.sql.functions import row_number
+
+# Sparkセッションの作成
+# spark = SparkSession.builder \
+#     .appName("Remove Duplicates from Delta Table") \
+#     .getOrCreate()
+
+# Deltaテーブルの読み込み
+# df = spark.read.format("delta").load("/path/to/table_name")
+usersDF = spark.read.table("users_dirty")
+
+# ウィンドウ定義
+window_spec = Window.partitionBy("email").orderBy("updated")
+
+# ROW_NUMBER関数の適用
+df_with_row_num = usersDF.withColumn("row_num", row_number().over(window_spec))
+
+# row_numが1の行のみを保持
+deduplicated_df = df_with_row_num.filter(df_with_row_num.row_num == 1).drop("row_num")
+
+# 重複を排除したテーブルを新しいDeltaテーブルとして保存
+# deduplicated_df.write.format("delta").mode("overwrite").save("/path/to/deduplicated_table_name")
+
+# 重複を排除したテーブルデータの表示
+deduplicated_df.show()
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC ### Delta Lake テーブルのアップデート
+# MAGIC
+# MAGIC 既存のDelta Lakeテーブルを直接更新して重複を削除する方法もある。以下のような手順で、重複行を削除してテーブルを更新する。
+# MAGIC
+# MAGIC ```sql
+# MAGIC WITH ranked_data AS (
+# MAGIC     SELECT *, ROW_NUMBER() OVER (PARTITION BY key_column ORDER BY another_column) AS row_num
+# MAGIC     FROM table_name
+# MAGIC )
+# MAGIC DELETE FROM table_name
+# MAGIC WHERE key_column IN (
+# MAGIC     SELECT key_column
+# MAGIC     FROM ranked_data
+# MAGIC     WHERE row_num > 1
+# MAGIC );
+# MAGIC ```
+# MAGIC
+# MAGIC このクエリは、一度重複行を特定し、重複している行（`row_num > 1`）を削除することでテーブルを更新する。
+# MAGIC
+# MAGIC 以上の方法により、Delta Lakeにおける既存のテーブルから行の重複を効果的に排除することができる。各方法は、目的やシナリオに応じて使い分けることが推奨される。
 
 # COMMAND ----------
 
