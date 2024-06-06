@@ -569,6 +569,123 @@ dbutils.data.summarize(df_event_001)
 # COMMAND ----------
 
 # MAGIC %md
+# MAGIC ## ● count_if 関数の使用方法と、x が null のカウントの使用方法を特定する
+# MAGIC
+# MAGIC
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC ### データ準備
+
+# COMMAND ----------
+
+# MAGIC %sql
+# MAGIC CREATE OR REPLACE VIEW event_view_001
+# MAGIC AS SELECT * FROM json.`${DA.paths.kafka_events}/001.json`
+
+# COMMAND ----------
+
+# MAGIC %sql
+# MAGIC select * from event_view_001 limit 10;
+
+# COMMAND ----------
+
+spark.sql(f"""
+CREATE TABLE IF NOT EXISTS sales_csv
+  (order_id LONG, email STRING, transactions_timestamp LONG, total_item_quantity INTEGER, purchase_revenue_in_usd DOUBLE, unique_items INTEGER, items STRING)
+USING CSV
+OPTIONS (
+  header = "true",
+  delimiter = "|"
+)
+LOCATION "{DA.paths.sales_csv}"
+""")
+
+# COMMAND ----------
+
+# MAGIC %sql
+# MAGIC SELECT * FROM sales_csv LIMIT 10
+
+# COMMAND ----------
+
+# MAGIC %sql
+# MAGIC DROP TABLE IF EXISTS users_jdbc;
+# MAGIC
+# MAGIC CREATE TABLE users_jdbc
+# MAGIC USING JDBC
+# MAGIC OPTIONS (
+# MAGIC   url = "jdbc:sqlite:${DA.paths.ecommerce_db}",
+# MAGIC   dbtable = "users"
+# MAGIC )
+
+# COMMAND ----------
+
+# MAGIC %sql
+# MAGIC SELECT * FROM users_jdbc LIMIT 10
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC ### count_if 関数の使用方法
+# MAGIC
+# MAGIC Databricksにおいて`count_if`関数は、指定された条件を満たす行数をカウントするために使用される。具体的な構文は以下の通りである。
+# MAGIC
+# MAGIC ```sql
+# MAGIC SELECT count_if(condition) AS alias_name
+# MAGIC FROM table_name;
+# MAGIC ```
+# MAGIC
+# MAGIC `condition`には、行が条件を満たすかどうかを判定する論理式を指定する。たとえば、スコアが70以上である学生の数をカウントしたい場合、以下のクエリを使用する。
+# MAGIC
+# MAGIC ```sql
+# MAGIC SELECT count_if(score >= 70) AS passing_students
+# MAGIC FROM students;
+# MAGIC ```
+
+# COMMAND ----------
+
+# MAGIC %sql
+# MAGIC SELECT 
+# MAGIC   count_if(partition >= 1) AS partition_above1, 
+# MAGIC   count_if(partition == 0) AS partition_0, 
+# MAGIC   count_if(topic =="clickstream") as topic_clickstream,
+# MAGIC   count_if(topic !="clickstream") as topic_not_clickstream
+# MAGIC FROM event_view_001;
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC
+# MAGIC
+# MAGIC ### x が null のカウントの使用方法
+# MAGIC
+# MAGIC 列`x`が`NULL`である行の数をカウントするためには、`COUNT`関数と`CASE`文を併用する。具体的な構文は以下の通りである。
+# MAGIC
+# MAGIC ```sql
+# MAGIC SELECT COUNT(CASE WHEN x IS NULL THEN 1 END) AS null_count
+# MAGIC FROM table_name;
+# MAGIC ```
+# MAGIC
+# MAGIC このクエリでは、`CASE`文を利用して`x`列が`NULL`である場合に`1`を返し、それを`COUNT`関数でカウントする。例えば、学生リストにおいて`email`列が`NULL`である行数をカウントする場合、以下のクエリを使用する。
+# MAGIC
+# MAGIC ```sql
+# MAGIC SELECT COUNT(CASE WHEN email IS NULL THEN 1 END) AS null_emails
+# MAGIC FROM students;
+# MAGIC ```
+# MAGIC
+# MAGIC 以上の方法を用いることで、Databricksにおいて特定の条件を満たす行数や`NULL`値のカウントが効率的に行える。
+# MAGIC
+
+# COMMAND ----------
+
+# MAGIC %sql
+# MAGIC SELECT COUNT(CASE WHEN email IS NULL THEN 1 END) AS null_emails
+# MAGIC FROM users_jdbc;
+
+# COMMAND ----------
+
+# MAGIC %md
 # MAGIC ## ● 未整理
 
 # COMMAND ----------
