@@ -686,6 +686,75 @@ LOCATION "{DA.paths.sales_csv}"
 # COMMAND ----------
 
 # MAGIC %md
+# MAGIC ## ● count(row) で NULL の値をスキップする方法
+# MAGIC
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC
+# MAGIC ### count 関数の基本的な使用方法
+# MAGIC
+# MAGIC Databricksにおける`count`関数は、指定された列に対する非NULLの行数をカウントするために使用される。基本的な構文は以下の通りである。
+# MAGIC
+# MAGIC ```sql
+# MAGIC SELECT COUNT(column_name) AS alias_name
+# MAGIC FROM table_name;
+# MAGIC ```
+# MAGIC
+# MAGIC このクエリでは、`column_name`が`NULL`でない行数がカウントされ、結果が`alias_name`として返される。
+# MAGIC
+
+# COMMAND ----------
+
+# MAGIC %sql
+# MAGIC SELECT COUNT(user_id) AS id_count
+# MAGIC FROM users_jdbc;
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC
+# MAGIC ### NULL の値をスキップする方法
+# MAGIC
+# MAGIC `count`関数はデフォルトで`NULL`値をスキップする特性を持つため、特に追加の条件を指定する必要はない。具体例を以下に示す。
+# MAGIC
+# MAGIC 例えば、学生リストにおいて`email`列が`NULL`でない行数、すなわち有効なメールアドレスが存在する学生の数をカウントしたい場合、以下のクエリを用いる。
+# MAGIC
+# MAGIC ```sql
+# MAGIC SELECT COUNT(email) AS valid_emails
+# MAGIC FROM students;
+# MAGIC ```
+# MAGIC
+# MAGIC このクエリの実行結果は、`email`列が`NULL`でない行数を返す。従って、`email`が`NULL`である行は自動的にスキップされる。
+# MAGIC
+
+# COMMAND ----------
+
+# MAGIC %sql
+# MAGIC SELECT COUNT(user_id) AS id_count, COUNT(email) AS email_count
+# MAGIC FROM users_jdbc;
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC
+# MAGIC ### その他の例
+# MAGIC
+# MAGIC 別の例として、製品リストにおける`price`列が`NULL`でない行数、すなわち価格が設定されている製品の数をカウントするクエリを以下に示す。
+# MAGIC
+# MAGIC ```sql
+# MAGIC SELECT COUNT(price) AS valid_prices
+# MAGIC FROM products;
+# MAGIC ```
+# MAGIC
+# MAGIC このクエリでは、`price`列が`NULL`でない製品の数が結果として返される。`count`関数のこの特性により、データのクレンジングや分析が効率的に行える。
+# MAGIC
+# MAGIC 以上の方法を用いることで、Databricksにおいて`NULL`値をスキップして非NULLの値の数をカウントすることが可能である。
+
+# COMMAND ----------
+
+# MAGIC %md
 # MAGIC ## ● 未整理
 
 # COMMAND ----------
