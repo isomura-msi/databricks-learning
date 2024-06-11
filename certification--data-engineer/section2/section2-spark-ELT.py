@@ -5,11 +5,6 @@
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC ## ● データ準備（トレーニング時のデータを利用）
-
-# COMMAND ----------
-
-# MAGIC %md
 # MAGIC ## ● 単一のファイルからのデータ抽出と、複数のファイルを含むディレクトリからのデータ抽出を行う
 # MAGIC
 # MAGIC ### ○ 参考記事
@@ -22,14 +17,6 @@
 # COMMAND ----------
 
 # MAGIC %run ./Includes/Classroom-Setup-02.1
-
-# COMMAND ----------
-
-# MAGIC %run ./Includes/Classroom-Setup-02.2
-
-# COMMAND ----------
-
-# MAGIC %run ./Includes/Classroom-Setup-02.4
 
 # COMMAND ----------
 
@@ -589,6 +576,10 @@ dbutils.data.summarize(df_event_001)
 
 # COMMAND ----------
 
+# MAGIC %run ./Includes/Classroom-Setup-02.2
+
+# COMMAND ----------
+
 # MAGIC %sql
 # MAGIC CREATE OR REPLACE VIEW event_view_001
 # MAGIC AS SELECT * FROM json.`${DA.paths.kafka_events}/001.json`
@@ -740,6 +731,10 @@ LOCATION "{DA.paths.sales_csv}"
 
 # COMMAND ----------
 
+# MAGIC %run ./Includes/Classroom-Setup-02.2
+
+# COMMAND ----------
+
 # MAGIC %sql
 # MAGIC SELECT COUNT(user_id) AS id_count, COUNT(email) AS email_count
 # MAGIC FROM users_jdbc;
@@ -760,6 +755,10 @@ LOCATION "{DA.paths.sales_csv}"
 # MAGIC このクエリでは、`price`列が`NULL`でない製品の数が結果として返される。`count`関数のこの特性により、データのクレンジングや分析が効率的に行える。
 # MAGIC
 # MAGIC 以上の方法を用いることで、Databricksにおいて`NULL`値をスキップして非NULLの値の数をカウントすることが可能である。
+
+# COMMAND ----------
+
+# MAGIC %run ./Includes/Classroom-Setup-02.4
 
 # COMMAND ----------
 
@@ -1216,27 +1215,230 @@ dedupedDF.count()
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC ## ● 未整理
+# MAGIC ## ● すべての行に対してプライマリキーが一意であることを確認する。
 
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC ### ○ 読み取りオプション未使用で上手く読み込めない例
+# MAGIC ### 方法1: GROUP BY と COUNT を使用
+# MAGIC
+# MAGIC 特定の列がプライマリキーとして一意であることを確認するには、まずGROUP BYを使用して行をグループ化し、その後に各グループの出現回数を数える。出現回数が1を超えるグループが存在しないかを確認する。
+# MAGIC
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC #### SQL
+# MAGIC
+# MAGIC ```sql
+# MAGIC SELECT primary_key_column, COUNT(*)
+# MAGIC FROM table_name
+# MAGIC GROUP BY primary_key_column
+# MAGIC HAVING COUNT(*) > 1;
+# MAGIC ```
+# MAGIC
+# MAGIC このクエリは、一意でないプライマリキー値を持つすべての行を選択する。このSELECT文の結果が空ならば、プライマリキーは一意であると結論付けられる。
+# MAGIC
 
 # COMMAND ----------
 
 # MAGIC %sql
-# MAGIC SELECT * FROM csv.`${DA.paths.sales_csv}`
+# MAGIC SELECT * FROM users_dirty
+
+# COMMAND ----------
+
+users_dirty_ddl = spark.sql("DESCRIBE users_dirty")
+users_dirty_ddl
+
+# COMMAND ----------
+
+df_users_dirty = spark.table("users_dirty")
+df_users_dirty.printSchema()
+
+# COMMAND ----------
+
+# MAGIC %sql
+# MAGIC SELECT user_id, COUNT(*)
+# MAGIC FROM users_dirty
+# MAGIC GROUP BY user_id
+# MAGIC HAVING COUNT(*) > 1;
+
+# COMMAND ----------
+
+# MAGIC %sql
+# MAGIC SELECT *
+# MAGIC FROM users_dirty
+# MAGIC WHERE user_id = "UA000000107391209"
 
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC 上記から次のことが分かります：
+# MAGIC #### Python
 # MAGIC
-# MAGIC 1. ヘッダの列がテーブルの列として抽出されています
-# MAGIC 1. すべての列が１つの列として読み込まれています
-# MAGIC 1. ファイルはパイプ（ | ）区切りを使用しています
-# MAGIC 1. 最後の列には、切り捨てられるネスト化されたデータが含まれています。
+# MAGIC ```python
+# MAGIC from pyspark.sql.functions import col, count
+# MAGIC
+# MAGIC df = spark.table('table_name')
+# MAGIC result = df.groupBy('primary_key_column').count().filter(col('count') > 1)
+# MAGIC
+# MAGIC if result.count() == 0:
+# MAGIC     print("Primary key is unique.")
+# MAGIC else:
+# MAGIC     print("Primary key is not unique.")
+# MAGIC ```
+# MAGIC
+# MAGIC このスクリプトは一意でないプライマリキー値を見つけ、その数に応じてメッセージを表示する。resultのカウントが0の場合、一意であることが保証される。
+# MAGIC
+
+# COMMAND ----------
+
+from pyspark.sql.functions import col, count
+
+df = spark.table('users_dirty')
+result = df.groupBy('user_id').count().filter(col('count') > 1)
+
+if result.count() == 0:
+    print("Primary key is unique.")
+else:
+    print("Primary key is not unique.")
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC
+# MAGIC ### 方法2: ウィンドウ関数を使用
+# MAGIC
+# MAGIC ウィンドウ関数を使用してプライマリキーの一意性を確認する方法もある。ここではRow Numberウィンドウ関数を使用する。
+# MAGIC
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC
+# MAGIC #### SQL
+# MAGIC
+# MAGIC ```sql
+# MAGIC WITH ranked_rows AS (
+# MAGIC     SELECT 
+# MAGIC         primary_key_column, 
+# MAGIC         ROW_NUMBER() OVER (PARTITION BY primary_key_column ORDER BY some_column) AS row_num
+# MAGIC     FROM table_name
+# MAGIC )
+# MAGIC SELECT *
+# MAGIC FROM ranked_rows
+# MAGIC WHERE row_num > 1;
+# MAGIC ```
+# MAGIC
+# MAGIC このクエリは同じプライマリキー値が複数回出現する行を特定する。結果が空の場合、プライマリキーは一意である。
+# MAGIC
+
+# COMMAND ----------
+
+# MAGIC %sql
+# MAGIC WITH ranked_rows AS (
+# MAGIC     SELECT 
+# MAGIC         user_id, 
+# MAGIC         ROW_NUMBER() OVER (PARTITION BY user_id ORDER BY updated) AS row_num
+# MAGIC     FROM users_dirty
+# MAGIC )
+# MAGIC SELECT *
+# MAGIC FROM ranked_rows
+# MAGIC WHERE row_num > 1;
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC
+# MAGIC #### Python
+# MAGIC
+# MAGIC ```python
+# MAGIC from pyspark.sql import Window
+# MAGIC from pyspark.sql.functions import row_number
+# MAGIC
+# MAGIC window_spec = Window.partitionBy('primary_key_column').orderBy('some_column')
+# MAGIC df_with_row_num = df.withColumn('row_num', row_number().over(window_spec))
+# MAGIC
+# MAGIC result = df_with_row_num.filter(col('row_num') > 1)
+# MAGIC
+# MAGIC if result.count() == 0:
+# MAGIC     print("Primary key is unique.")
+# MAGIC else:
+# MAGIC     print("Primary key is not unique.")
+# MAGIC ```
+# MAGIC
+# MAGIC このスクリプトも同様に、重複しているプライマリキーを持つ行を見つけ、その数に応じてメッセージを表示する。結果が存在しない場合、プライマリキーは一意である。
+
+# COMMAND ----------
+
+from pyspark.sql import Window
+from pyspark.sql.functions import row_number
+
+df = spark.table('users_dirty')
+window_spec = Window.partitionBy('user_id').orderBy('updated')
+df_with_row_num = df.withColumn('row_num', row_number().over(window_spec))
+
+result = df_with_row_num.filter(col('row_num') > 1)
+
+if result.count() == 0:
+    print("Primary key is unique.")
+else:
+    print("Primary key is not unique.")
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC ### 方法3: DISTINCTとCOUNTを使用
+# MAGIC
+# MAGIC DISTINCTを利用してプライマリキーの一意性を確認する。
+# MAGIC
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC #### SQL
+# MAGIC
+# MAGIC ```sql
+# MAGIC SELECT COUNT(*) as total_rows, COUNT(DISTINCT primary_key_column) as distinct_rows
+# MAGIC FROM table_name;
+# MAGIC ```
+# MAGIC
+# MAGIC このクエリは全行数と一意なプライマリキーの行数を比較する。同じであれば、一意性が保たれていると判断できる。
+# MAGIC
+
+# COMMAND ----------
+
+# MAGIC %sql
+# MAGIC SELECT COUNT(*) as total_rows, COUNT(DISTINCT user_id) as distinct_rows
+# MAGIC FROM users_dirty;
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC
+# MAGIC #### Python
+# MAGIC
+# MAGIC ```python
+# MAGIC total_rows = df.count()
+# MAGIC distinct_rows = df.select('primary_key_column').distinct().count()
+# MAGIC
+# MAGIC if total_rows == distinct_rows:
+# MAGIC     print("Primary key is unique.")
+# MAGIC else:
+# MAGIC     print("Primary key is not unique.")
+# MAGIC ```
+# MAGIC
+# MAGIC total_rowsとdistinct_rowsを比較することで、プライマリキーの一意性を確認する。等しい場合、一意である。
+
+# COMMAND ----------
+
+df = spark.table('users_dirty')
+total_rows = df.count()
+distinct_rows = df.select('user_id').distinct().count()
+
+if total_rows == distinct_rows:
+    print("Primary key is unique.")
+else:
+    print("Primary key is not unique.")
 
 # COMMAND ----------
 
