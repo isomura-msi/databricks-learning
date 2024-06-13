@@ -289,3 +289,149 @@ df_with_timestamp.show()
 # エポック秒からタイムスタンプへの変換
 df_with_epoch_timestamp = df.withColumn("timestamp_date", to_timestamp(col("epoch_seconds").cast("timestamp")))
 df_with_epoch_timestamp.show()
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC ## ● タイムスタンプからカレンダーのデータを抽出する。
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC ### 日付・時刻の抽出
+# MAGIC タイムスタンプ型データから、年、月、日、時間、分、秒などのカレンダー情報を抽出することは、データ解析において重要な操作の一つである。Databricksでは、SQLおよびPySparkを使用してこれらの抽出を簡単に行うことができる。
+# MAGIC
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC
+# MAGIC #### SQL
+# MAGIC SQLでは、`YEAR`, `MONTH`, `DAY`, `HOUR`, `MINUTE`, `SECOND`などの関数を用いてタイムスタンプから各カレンダー情報を抽出する。
+# MAGIC
+# MAGIC **確認用コード:**
+
+# COMMAND ----------
+
+# MAGIC %sql
+# MAGIC
+# MAGIC -- テーブルとデータの作成
+# MAGIC CREATE OR REPLACE TEMPORARY VIEW sample_table AS
+# MAGIC SELECT '2023-10-01 12:34:56' as timestamp_date;
+# MAGIC
+# MAGIC SELECT * FROM sample_table;
+# MAGIC
+# MAGIC -- タイムスタンプからカレンダー情報を抽出
+# MAGIC SELECT 
+# MAGIC     timestamp_date,
+# MAGIC     YEAR(timestamp_date) as year,
+# MAGIC     MONTH(timestamp_date) as month,
+# MAGIC     DAY(timestamp_date) as day,
+# MAGIC     HOUR(timestamp_date) as hour,
+# MAGIC     MINUTE(timestamp_date) as minute,
+# MAGIC     SECOND(timestamp_date) as second
+# MAGIC FROM sample_table;
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC
+# MAGIC #### Python
+# MAGIC Pythonでは、`pyspark.sql.functions`モジュール内の`year`, `month`, `dayofmonth`, `hour`, `minute`, `second`関数を用いてタイムスタンプから各カレンダー情報を抽出する。
+# MAGIC
+# MAGIC **確認用コード:**
+
+# COMMAND ----------
+
+
+# Databricks Notebook 用に記載
+from pyspark.sql import SparkSession
+from pyspark.sql.functions import year, month, dayofmonth, hour, minute, second, col
+
+# Spark セッションの作成
+spark = SparkSession.builder.appName("CalendarDataExtraction").getOrCreate()
+
+# サンプルデータの作成
+data = [("2023-10-01 12:34:56",)]
+columns = ["timestamp_date"]
+
+# データフレームの作成
+df = spark.createDataFrame(data, columns)
+df = df.withColumn("timestamp_date", col("timestamp_date").cast("timestamp"))
+# df.show()
+display(df)
+
+# タイムスタンプからカレンダー情報を抽出
+df_with_calendar_data = df.select(
+    col("timestamp_date"),
+    year("timestamp_date").alias("year"),
+    month("timestamp_date").alias("month"),
+    dayofmonth("timestamp_date").alias("day"),
+    hour("timestamp_date").alias("hour"),
+    minute("timestamp_date").alias("minute"),
+    second("timestamp_date").alias("second")
+)
+# df_with_calendar_data.show()
+display(df_with_calendar_data)
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC
+# MAGIC ### withColumn や alias の使い分け
+# MAGIC
+# MAGIC `withColumn`関数と`alias`メソッドは双方ともDataFrameに新しいカラムを追加したり、既存のカラム名を変更したりするために用いられる。しかし、その適用シナリオおよび用途は異なる。
+# MAGIC
+# MAGIC #### withColumn関数
+# MAGIC
+# MAGIC `withColumn`関数は、DataFrameに新しいカラムを追加する場合や既存のカラムを変更する場合に使用される。新しいカラム名と、そのカラムに対応する計算や変換を指定する必要がある。
+# MAGIC
+# MAGIC ##### 使い方と例：
+# MAGIC 以下のコードは、`timestamp`カラムから年、月、曜日、分、秒を抽出し、新しいカラムとしてDataFrameに追加する例である。
+# MAGIC
+# MAGIC ```python
+# MAGIC datetime_df = (timestamp_df
+# MAGIC                .withColumn("year", year(col("timestamp")))
+# MAGIC                .withColumn("month", month(col("timestamp")))
+# MAGIC                .withColumn("dayofweek", dayofweek(col("timestamp")))
+# MAGIC                .withColumn("minute", minute(col("timestamp")))
+# MAGIC                .withColumn("second", second(col("timestamp")))
+# MAGIC               )
+# MAGIC display(datetime_df)
+# MAGIC ```
+# MAGIC
+# MAGIC この例では、`withColumn`メソッドを連鎖的に呼び出して各カラムを追加している。これにより、新しいカラム名がそれぞれ`year`, `month`, `dayofweek`, `minute`, `second`となる。
+# MAGIC
+# MAGIC #### aliasメソッド
+# MAGIC
+# MAGIC `alias`メソッドは、カラムの名前を一時的に変更する場合に使用される。特に`select`メソッドと併用することが多い。
+# MAGIC
+# MAGIC ##### 使い方と例：
+# MAGIC 以下のコードは、`timestamp_date`カラムから年、月、日、時、分、秒を抽出し、エイリアスをつけて新しい名前を付けた上で新しいDataFrameを作成する例である。
+# MAGIC
+# MAGIC ```python
+# MAGIC df_with_calendar_data = df.select(
+# MAGIC     col("timestamp_date"),
+# MAGIC     year("timestamp_date").alias("year"),
+# MAGIC     month("timestamp_date").alias("month"),
+# MAGIC     dayofmonth("timestamp_date").alias("day"),
+# MAGIC     hour("timestamp_date").alias("hour"),
+# MAGIC     minute("timestamp_date").alias("minute"),
+# MAGIC     second("timestamp_date").alias("second")
+# MAGIC )
+# MAGIC df_with_calendar_data.show()
+# MAGIC ```
+# MAGIC
+# MAGIC この場合、`select`メソッドと合わせて`alias`メソッドを使用することで抽出カラムの名前を指定している。これにより、元のカラムは新しい名前（エイリアス）で指定されてDataFrameに含まれる。
+# MAGIC
+# MAGIC #### 使い分けのポイント
+# MAGIC
+# MAGIC - **`withColumn`を使用する場合**：
+# MAGIC   - 新しいカラムを追加したり、既存のカラムを更新したりする場合。
+# MAGIC   - 「段階的に」新しいカラムを追加する場合。
+# MAGIC
+# MAGIC - **`alias`を使用する場合**：
+# MAGIC   - `select`や`selectExpr`メソッド内でカラムに一時的な名前を付けたい場合。
+# MAGIC   - カラムの抽出と同時に名前を変更したい場合（よりコンパクトなコーディングスタイル）。
+# MAGIC
+# MAGIC この使い分けにより、コードが意図した操作を明確に反映しやすくなり、DataFrame操作がパフォーマンス的にもコードの読みやすさの観点でも最適化される。
