@@ -205,3 +205,87 @@ filtered_users_not_in_orders_df = users_df.join(
     how='left_anti'
 )
 filtered_users_not_in_orders_df.show()
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC ## ● 列をタイムスタンプにキャストする。
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC ### 型変換の概要
+# MAGIC データを効率的に扱うために、テキストや数字などのデータ型をタイムスタンプ型に変換することがある。この変換は、日時データを標準形式のタイムスタンプとして一貫性を持たせるために重要である。
+# MAGIC
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC #### SQL
+# MAGIC SQLでは、`CAST`または`TO_TIMESTAMP`関数を用いてタイムスタンプ型に変換する。これらの関数は、文字列形式の日時やエポック秒をタイムスタンプ形式に変換するために使用される。
+# MAGIC
+# MAGIC **確認用コード:**
+# MAGIC
+
+# COMMAND ----------
+
+# MAGIC %sql
+# MAGIC -- テーブルとデータの作成
+# MAGIC CREATE OR REPLACE TEMPORARY VIEW sample_table AS
+# MAGIC SELECT '2023-10-01 12:34:56' as string_date, 1696150496 as epoch_seconds;
+# MAGIC
+# MAGIC SELECT * FROM sample_table;
+# MAGIC
+
+# COMMAND ----------
+
+# MAGIC %sql
+# MAGIC
+# MAGIC -- 文字列からタイムスタンプへの変換
+# MAGIC SELECT string_date, CAST(string_date as TIMESTAMP) as timestamp_date FROM sample_table;
+# MAGIC
+
+# COMMAND ----------
+
+# MAGIC %sql
+# MAGIC
+# MAGIC -- エポック秒からタイムスタンプへの変換
+# MAGIC -- epoch_secondsを一旦BIGINT型にキャストしている理由: 
+# MAGIC -- 元のデータ型が明示的ではない場合や、エポック秒が文字列や整数として保存されている可能性があるためである。
+# MAGIC -- エポック秒は通常、非常に大きな整数で表されるため、BIGINT型（64ビット整数）にキャストしてからタイムスタンプに変換することが一般的である。
+# MAGIC SELECT epoch_seconds, TO_TIMESTAMP(CAST(epoch_seconds as BIGINT)) as timestamp_date FROM sample_table;
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC
+# MAGIC #### Python
+# MAGIC Pythonでは、`pyspark.sql.functions`モジュール内の`to_timestamp`関数および`cast`を使用してタイムスタンプ型に変換する。また、Pythonの標準ライブラリである`datetime`を併用することで、より柔軟なデータ操作が可能である。
+# MAGIC
+# MAGIC **確認用コード:**
+# MAGIC
+
+# COMMAND ----------
+
+# Databricks Notebook 用に記載
+from pyspark.sql import SparkSession
+from pyspark.sql.functions import to_timestamp, col
+
+# Spark セッションの作成
+spark = SparkSession.builder.appName("TimestampConversion").getOrCreate()
+
+# サンプルデータの作成
+data = [("2023-10-01 12:34:56", 1696150496)]
+columns = ["string_date", "epoch_seconds"]
+
+# データフレームの作成
+df = spark.createDataFrame(data, columns)
+df.show()
+
+# 文字列からタイムスタンプへの変換
+df_with_timestamp = df.withColumn("timestamp_date", to_timestamp(col("string_date")))
+df_with_timestamp.show()
+
+# エポック秒からタイムスタンプへの変換
+df_with_epoch_timestamp = df.withColumn("timestamp_date", to_timestamp(col("epoch_seconds").cast("timestamp")))
+df_with_epoch_timestamp.show()
