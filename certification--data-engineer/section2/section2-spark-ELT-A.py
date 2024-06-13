@@ -314,7 +314,7 @@ df.show()
 # COMMAND ----------
 
 print(_sqldf)
-dbutils.data.summarize(_sqldf)
+# dbutils.data.summarize(_sqldf)
 
 # これだと結果が _sqldf に設定されない。「java.lang.UnsupportedOperationException: empty.reduceLeft」エラーになる。
 
@@ -333,7 +333,7 @@ dbutils.data.summarize(_sqldf)
 
 df_event_001 = _sqldf
 print(df_event_001)
-dbutils.data.summarize(df_event_001)
+# dbutils.data.summarize(df_event_001)
 
 # COMMAND ----------
 

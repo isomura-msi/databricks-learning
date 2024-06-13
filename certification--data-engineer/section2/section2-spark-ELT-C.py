@@ -663,7 +663,7 @@ else:
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC ## ● フィールドの一意性制約の確認
+# MAGIC ## ● フィールドが別のフィールド内の一意の値に 1 つだけ関連付けられていることを確認する（フィールドの一意性制約の確認）
 
 # COMMAND ----------
 
@@ -675,7 +675,7 @@ else:
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC #### SQL
+# MAGIC ### SQL
 # MAGIC SQLでは、サブクエリを用いて、対象フィールドの一意性を確認することができる。以下は、`field1` が `field2` に対して一意であることを確認する例である。
 # MAGIC
 # MAGIC ```sql
@@ -694,3 +694,254 @@ else:
 # MAGIC FROM users_dirty
 # MAGIC GROUP BY user_id
 # MAGIC HAVING COUNT(DISTINCT updated) > 1;
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC ### Python
+# MAGIC Pythonでは、Pandasライブラリを使用して同様の確認が可能である。以下に、`field1` が `field2` に対して一意であるかを確認するコード例を示す。
+# MAGIC
+# MAGIC ```python
+# MAGIC import pandas as pd
+# MAGIC
+# MAGIC # データフレームの作成
+# MAGIC df = pd.DataFrame({
+# MAGIC     'field1': [...],  # field1のデータ
+# MAGIC     'field2': [...]   # field2のデータ
+# MAGIC })
+# MAGIC
+# MAGIC # グループ化して一意な値のカウントを計算
+# MAGIC unique_count = df.groupby('field1')['field2'].nunique()
+# MAGIC
+# MAGIC # 一意性の確認
+# MAGIC violations = unique_count[unique_count > 1]
+# MAGIC
+# MAGIC if not violations.empty:
+# MAGIC     print("一意性制約違反のレコード:")
+# MAGIC     print(violations)
+# MAGIC else:
+# MAGIC     print("一意性が保たれています")
+# MAGIC ```
+# MAGIC このスクリプトは、`field1` に対して `field2` の値が一意でないレコードを出力する。一意性が保たれている場合には何も出力しない。
+# MAGIC
+
+# COMMAND ----------
+
+from pyspark.sql import SparkSession
+from pyspark.sql.functions import countDistinct
+
+# データフレームの作成
+df = spark.table('users_dirty')
+
+# グループ化して一意な値のカウントを計算
+unique_count = df.groupBy('user_id').agg(countDistinct('updated').alias('unique_count'))
+
+# 一意性の確認
+violations = unique_count.filter(unique_count['unique_count'] > 1)
+
+if violations.count() > 0:
+    print("一意性制約違反のレコード:")
+    violations.show()
+else:
+    print("一意性が保たれています")
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC ## ● フィールドが別のフィールド内の一意の値に 1 つだけ関連付けられていることを確認する（「関数従属性 (Functional Dependency)」に関することを指す場合）
+# MAGIC
+# MAGIC あるフィールド（列）の値が、別のフィールド（列）の値によって一意に決まることを意味する。  
+# MAGIC これはデータベースの正規化や整合性の確認において重要な概念である。
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC ### 解釈の具体例
+# MAGIC
+# MAGIC 1. **関数従属性の確認**：
+# MAGIC    - フィールドA（例：`customer_id`）の各値に対して、フィールドB（例：`email`）の値が一意に決まる。
+# MAGIC    - つまり、同じ`customer_id`に対しては常に同じ`email`が関連付けられている状態。
+# MAGIC
+# MAGIC 2. **ユニーク制約の利用**：
+# MAGIC    - テーブル内で、特定のフィールドの値が他のフィールドの値に対して一意であることを確保するためにユニーク制約を設定する。
+# MAGIC    - 例：`customer_id`と`email`の組み合わせが一意であることを保証するユニーク制約。
+# MAGIC
+# MAGIC
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC ### 具体例
+# MAGIC
+# MAGIC 以下のようなテーブルがあるとする：
+# MAGIC
+# MAGIC ```sql
+# MAGIC CREATE TABLE Customers (
+# MAGIC     customer_id INT,
+# MAGIC     email VARCHAR(255),
+# MAGIC     PRIMARY KEY (customer_id),
+# MAGIC     UNIQUE (email)
+# MAGIC );
+# MAGIC ```
+# MAGIC
+# MAGIC このテーブル定義により、`customer_id`に対して一意の`email`が存在することが保証される。すなわち、`email`フィールドが他のどの`customer_id`にも属さず、各`customer_id`に対して一意の`email`が割り当てられていることを確認できる。
+# MAGIC
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC
+# MAGIC ### 実際の確認クエリ
+# MAGIC
+# MAGIC 特定のデータに対して、この条件が守られているかを確認するSQLクエリは以下のようになる：
+# MAGIC
+# MAGIC ```sql
+# MAGIC SELECT customer_id, COUNT(DISTINCT email) AS unique_email_count
+# MAGIC FROM Customers
+# MAGIC GROUP BY customer_id
+# MAGIC HAVING COUNT(DISTINCT email) > 1;
+# MAGIC ```
+# MAGIC
+# MAGIC このクエリは、各`customer_id`に対して異なる`email`が複数存在する場合（つまり、条件に違反している場合）を抽出する。  
+# MAGIC 結果セットが空であれば、条件が守られていることを確認できる。
+# MAGIC
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC
+# MAGIC ### 応用例
+# MAGIC
+# MAGIC 同様の概念は他のフィールドにも応用可能である。  
+# MAGIC 例えば、社員の`employee_id`と`social_security_number`（社会保障番号）など、異なるエンティティ間で一意の関係を持つフィールドにも適用できる。
+# MAGIC
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC ### Databricksでの関数従属性の確認
+# MAGIC
+# MAGIC 以下の手順で、Databricksノートブックでこの要件を確認する方法を示す。
+# MAGIC
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC #### ステップ1：データフレームの準備
+# MAGIC
+# MAGIC まず、データフレームを作成または読み込む。以下はサンプルデータの作成例。
+# MAGIC
+# MAGIC ```python
+# MAGIC # DatabricksのPythonセルでデータフレームを作成
+# MAGIC from pyspark.sql import SparkSession
+# MAGIC from pyspark.sql import Row
+# MAGIC
+# MAGIC # Sparkセッションの作成
+# MAGIC spark = SparkSession.builder.appName("UniqueValueCheck").getOrCreate()
+# MAGIC
+# MAGIC # サンプルデータの作成
+# MAGIC data = [
+# MAGIC     Row(customer_id=1, email="customer1@example.com"),
+# MAGIC     Row(customer_id=2, email="customer2@example.com"),
+# MAGIC     Row(customer_id=3, email="customer3@example.com"),
+# MAGIC     Row(customer_id=1, email="customer1@example.com"),  # 重複するメール
+# MAGIC     Row(customer_id=2, email="another_email@example.com")  # 重複しないメール
+# MAGIC ]
+# MAGIC
+# MAGIC # データフレームの作成
+# MAGIC df = spark.createDataFrame(data)
+# MAGIC df.createOrReplaceTempView("Customers")
+# MAGIC ```
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC
+# MAGIC #### ステップ2：SQLクエリで確認
+# MAGIC
+# MAGIC SQLクエリを実行して、各`customer_id`に対して一意の`email`が関連付けられているかを確認する。
+# MAGIC
+# MAGIC ```python
+# MAGIC # SQLクエリの実行
+# MAGIC unique_check_query = """
+# MAGIC SELECT customer_id, COUNT(DISTINCT email) AS unique_email_count
+# MAGIC FROM Customers
+# MAGIC GROUP BY customer_id
+# MAGIC HAVING COUNT(DISTINCT email) > 1
+# MAGIC """
+# MAGIC
+# MAGIC unique_check_result = spark.sql(unique_check_query)
+# MAGIC unique_check_result.show()
+# MAGIC ```
+# MAGIC
+# MAGIC このクエリは、`customer_id`ごとに異なる`email`が複数存在する場合を抽出する。結果セットが空であれば、各`customer_id`に一意の`email`が関連付けられていることを確認できる。
+# MAGIC
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC
+# MAGIC #### ステップ3：結果の確認とアクション
+# MAGIC
+# MAGIC 上記のクエリ結果に基づいて、問題がある場合の対処を行う。例えば、エラーログの出力やデータの修正など。
+# MAGIC
+# MAGIC ```python
+# MAGIC # 結果が空であることを確認
+# MAGIC if unique_check_result.count() == 0:
+# MAGIC     print("各customer_idに一意のemailが関連付けられている。")
+# MAGIC else:
+# MAGIC     print("一部のcustomer_idに対して複数のemailが関連付けられている。")
+# MAGIC     unique_check_result.show()
+# MAGIC ```
+
+# COMMAND ----------
+
+# DatabricksのPythonセルでデータフレームを作成
+from pyspark.sql import SparkSession
+from pyspark.sql import Row
+
+# Sparkセッションの作成
+spark = SparkSession.builder.appName("UniqueValueCheck").getOrCreate()
+
+# サンプルデータの作成
+data = [
+    Row(customer_id=1, email="customer1@example.com"),
+    Row(customer_id=2, email="customer2@example.com"),
+    Row(customer_id=3, email="customer3@example.com"),
+    Row(customer_id=1, email="customer1@example.com"),  # 重複するメール
+    Row(customer_id=2, email="another_email@example.com")  # 重複しないメール
+]
+
+# データフレームの作成
+df = spark.createDataFrame(data)
+df.createOrReplaceTempView("Customers")
+
+# SQLクエリの実行
+unique_check_query = """
+SELECT customer_id, COUNT(DISTINCT email) AS unique_email_count
+FROM Customers
+GROUP BY customer_id
+HAVING COUNT(DISTINCT email) > 1
+"""
+
+unique_check_result = spark.sql(unique_check_query)
+unique_check_result.show()
+
+# 結果が空であることを確認
+if unique_check_result.count() == 0:
+    print("各customer_idに一意のemailが関連付けられている。")
+else:
+    print("一部のcustomer_idに対して複数のemailが関連付けられている。")
+    unique_check_result.show()
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC
+# MAGIC
+# MAGIC #### 追加の検討事項
+# MAGIC
+# MAGIC - **インデックスと制約**：Databricks上では通常のRDBMSのように直接インデックスや制約を設けることはできない※が、データクレンジングとデータ整合性を保つためのスクリプトを実行することで同様の結果を得られる。
+# MAGIC - **パフォーマンスの最適化**：大規模データに対してはSparkの特性を活かしてパーティショニングやキャッシングを適切に行うことでパフォーマンスを最適化する。
+# MAGIC
+# MAGIC ※DatabricksやApache Sparkは分散処理を前提としており、RDBMSのようなインデックスの概念が存在しないため。
