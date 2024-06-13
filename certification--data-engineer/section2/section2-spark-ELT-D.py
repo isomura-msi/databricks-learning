@@ -435,3 +435,307 @@ display(df_with_calendar_data)
 # MAGIC   - カラムの抽出と同時に名前を変更したい場合（よりコンパクトなコーディングスタイル）。
 # MAGIC
 # MAGIC この使い分けにより、コードが意図した操作を明確に反映しやすくなり、DataFrame操作がパフォーマンス的にもコードの読みやすさの観点でも最適化される。
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC ## ● 既存の文字列列から特定のパターンを抽出する。
+# MAGIC
+# MAGIC
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC ### 正規表現によるパターン抽出
+# MAGIC 特定のパターンを既存の文字列列から抽出する方法として、正規表現を用いる。Databricksにおいては、SQLおよびPythonの双方で以下のように実現できる。
+# MAGIC
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC
+# MAGIC #### SQL
+# MAGIC Databricks SQLでは`regexp_extract`関数を使用する。これは正規表現パターンに一致する部分文字列を抽出するための関数である。
+# MAGIC
+# MAGIC 以下に、確認用のテーブル・データ作成用のコードとともに、特定のパターン(例: emailアドレス)を抽出する方法を示す。
+# MAGIC
+
+# COMMAND ----------
+
+# MAGIC %sql
+# MAGIC
+# MAGIC -- テーブルの作成とデータの投入
+# MAGIC CREATE OR REPLACE TEMP VIEW example_table AS
+# MAGIC SELECT 'John Doe <john.doe@example.com>' AS info
+# MAGIC UNION ALL
+# MAGIC SELECT 'Jane Smith <jane.smith@example.net>' AS info
+# MAGIC UNION ALL
+# MAGIC SELECT 'Alice Wonderland <alice.w@wonderland.org>' AS info;
+# MAGIC
+# MAGIC -- emailアドレスの抽出
+# MAGIC SELECT info, 
+# MAGIC        regexp_extract(info, '<(.*?)>', 1) AS email_address
+# MAGIC FROM example_table;
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC
+# MAGIC #### Python
+# MAGIC DatabricksのPythonノートブックでは、PySparkの`regexp_extract`関数を用いる。これはDataFrame APIの一部であり、SQLと同様に正規表現パターンに一致する部分文字列を抽出できる。
+# MAGIC
+# MAGIC 以下に、確認用のテーブル・データ作成用のコードとともに、特定のパターン(例: emailアドレス)を抽出する方法を示す。
+# MAGIC
+
+# COMMAND ----------
+
+
+from pyspark.sql import SparkSession
+from pyspark.sql.functions import regexp_extract
+
+# SparkSessionの作成
+spark = SparkSession.builder.appName("Example").getOrCreate()
+
+# データの作成
+data = [
+    ('John Doe <john.doe@example.com>',),
+    ('Jane Smith <jane.smith@example.net>',),
+    ('Alice Wonderland <alice.w@wonderland.org>',)
+]
+
+# DataFrameの作成
+columns = ['info']
+df = spark.createDataFrame(data, columns)
+
+# emailアドレスの抽出
+df = df.withColumn('email_address', regexp_extract('info', '<(.*?)>', 1))
+
+# 結果の表示
+display(df)
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC
+# MAGIC ### 正規表現によるその他の応用例
+# MAGIC 他にもパターン抽出を使う例として、電話番号や日付の抽出がある。以下にそれらの例を示す。
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC
+# MAGIC #### 電話番号の抽出
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC ##### SQL
+
+# COMMAND ----------
+
+# MAGIC %sql
+# MAGIC
+# MAGIC -- テーブルの作成とデータの投入
+# MAGIC CREATE OR REPLACE TEMP VIEW phone_table AS
+# MAGIC SELECT 'Customer service: +1-800-555-1234' AS info
+# MAGIC UNION ALL
+# MAGIC SELECT 'Sales: +44-20-7946-0958' AS info;
+# MAGIC
+# MAGIC -- 電話番号の抽出
+# MAGIC SELECT info, 
+# MAGIC        regexp_extract(info, '\\+[0-9-]+', 0) AS phone_number
+# MAGIC FROM phone_table;
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC
+# MAGIC ##### Python
+
+# COMMAND ----------
+
+
+# データの作成
+phone_data = [
+    ('Customer service: +1-800-555-1234',),
+    ('Sales: +44-20-7946-0958',)
+]
+
+# DataFrameの作成
+phone_columns = ['info']
+phone_df = spark.createDataFrame(phone_data, phone_columns)
+
+# 電話番号の抽出
+phone_df = phone_df.withColumn('phone_number', regexp_extract('info', '\\+[0-9-]+', 0))
+
+# 結果の表示
+display(phone_df)
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC
+# MAGIC #### 日付の抽出
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC
+# MAGIC
+# MAGIC ##### SQL
+
+# COMMAND ----------
+
+# MAGIC %sql
+# MAGIC
+# MAGIC -- テーブルの作成とデータの投入
+# MAGIC CREATE OR REPLACE TEMP VIEW date_table AS
+# MAGIC SELECT 'Meeting on 2023-10-04 at conference room' AS info
+# MAGIC UNION ALL
+# MAGIC SELECT 'Deadline: 2023-12-31' AS info;
+# MAGIC
+# MAGIC -- 日付の抽出
+# MAGIC SELECT info, 
+# MAGIC        regexp_extract(info, '\\d{4}-\\d{2}-\\d{2}', 0) AS date
+# MAGIC FROM date_table;
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC
+# MAGIC ##### Python
+
+# COMMAND ----------
+
+
+# データの作成
+date_data = [
+    ('Meeting on 2023-10-04 at conference room',),
+    ('Deadline: 2023-12-31',)
+]
+
+# DataFrameの作成
+date_columns = ['info']
+date_df = spark.createDataFrame(date_data, date_columns)
+
+# 日付の抽出
+date_df = date_df.withColumn('date', regexp_extract('info', '\\d{4}-\\d{2}-\\d{2}', 0))
+
+# 結果の表示
+display(date_df)
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC ### 文字列操作関数を駆使する方法
+# MAGIC 特定のサブストリングを抽出するために、標準的な文字列操作関数（例えば、`substring`, `split`, `instr`など）を組み合わせる方法。
+# MAGIC
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC
+# MAGIC #### SQL
+# MAGIC SQLにおいて、`substring`や`split`, `instr`を用いて特定のパターンを抽出する例を示す。
+
+# COMMAND ----------
+
+# MAGIC %sql
+# MAGIC
+# MAGIC -- テーブルの作成とデータの投入
+# MAGIC CREATE OR REPLACE TEMP VIEW example_table AS
+# MAGIC SELECT 'John Doe <john.doe@example.com>' AS info
+# MAGIC UNION ALL
+# MAGIC SELECT 'Jane Smith <jane.smith@example.net>' AS info
+# MAGIC UNION ALL
+# MAGIC SELECT 'Alice Wonderland <alice.w@wonderland.org>' AS info;
+# MAGIC
+# MAGIC -- 角括弧内のemailアドレスの抽出
+# MAGIC SELECT info, 
+# MAGIC        substring(info, instr(info, '<') + 1, instr(info, '>') - instr(info, '<') - 1) AS email_address
+# MAGIC FROM example_table;
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC
+# MAGIC #### Python
+# MAGIC Pythonにおいて、PySparkの`substr`, `split`, `instr`を用いて特定のパターンを抽出する例を示す。
+
+# COMMAND ----------
+
+
+from pyspark.sql import SparkSession
+from pyspark.sql.functions import expr
+
+# SparkSessionの作成
+spark = SparkSession.builder.appName("Example").getOrCreate()
+
+# データの作成
+data = [
+    ('John Doe <john.doe@example.com>',),
+    ('Jane Smith <jane.smith@example.net>',),
+    ('Alice Wonderland <alice.w@wonderland.org>',)
+]
+
+# DataFrameの作成
+columns = ['info']
+df = spark.createDataFrame(data, columns)
+
+# emailアドレスの抽出
+# ※exprに渡している引数は、SQL 版と同様
+df = df.withColumn('email_address', expr("substring(info, instr(info, '<') + 1, instr(info, '>') - instr(info, '<') - 1)"))
+
+# 結果の表示
+display(df)
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC
+# MAGIC ### UDF (User-Defined Function) を使用する方法
+# MAGIC ユーザーが独自に定義した関数（UDF）を用いて特定のパターンを抽出する方法。これは、より複雑な抽出ロジックを実装できるという利点がある。
+# MAGIC
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC
+# MAGIC #### Python
+# MAGIC PySparkにおいて、UDFを用いて特定のパターンを抽出する例を示す。
+
+# COMMAND ----------
+
+from pyspark.sql import SparkSession
+from pyspark.sql.functions import udf
+from pyspark.sql.types import StringType
+import re
+
+# SparkSessionの作成
+spark = SparkSession.builder.appName("Example").getOrCreate()
+
+# データの作成
+data = [
+    ('John Doe <john.doe@example.com>',),
+    ('Jane Smith <jane.smith@example.net>',),
+    ('Alice Wonderland <alice.w@wonderland.org>',)
+]
+
+# DataFrameの作成
+columns = ['info']
+df = spark.createDataFrame(data, columns)
+
+# UDFの定義
+def extract_email(text):
+    match = re.search(r'<(.*?)>', text)
+    if match:
+        return match.group(1)
+    return None
+
+extract_email_udf = udf(extract_email, StringType())
+
+# emailアドレスの抽出
+df = df.withColumn('email_address', extract_email_udf(df['info']))
+
+# 結果の表示
+display(df)
