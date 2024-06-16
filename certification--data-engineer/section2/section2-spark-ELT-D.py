@@ -1182,3 +1182,219 @@ parsed_df = df.select(from_json(col("value"), schema).alias("json")).select("jso
 
 # 結果の表示
 display(parsed_df)
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC ## ● array 関数を使用するメリットを特定する
+# MAGIC
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC
+# MAGIC ### 配列データの操作
+# MAGIC
+# MAGIC 配列データを操作するための多角的な関数がSpark SQLには用意されている。これらの関数はデータ処理を容易にし、データの分解や集約を効率的に行うことができる。特に、**`array`**関数を利用することで、複数の値を一つのフィールドにまとめ、SQLクエリやデータフレーム操作をより直感的に行うことが可能になる。
+# MAGIC
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC
+# MAGIC #### SQL
+# MAGIC まず、以下のコードは、テーブルを作成しデータを挿入して、その中で配列関数を使う例を示す。
+# MAGIC
+
+# COMMAND ----------
+
+# MAGIC %sql
+# MAGIC
+# MAGIC -- テーブルの作成
+# MAGIC CREATE OR REPLACE TEMP VIEW test_table AS
+# MAGIC SELECT 1 AS id, 'Alice' AS name, array(10, 20, 30) AS values
+# MAGIC UNION ALL
+# MAGIC SELECT 2 AS id, 'Bob' AS name, array(40, 50) AS values
+# MAGIC UNION ALL
+# MAGIC SELECT 3 AS id, 'Carol' AS name, array(60, 70, 80, 90) AS values;
+# MAGIC
+# MAGIC select * from test_table;
+# MAGIC
+
+# COMMAND ----------
+
+# MAGIC %sql
+# MAGIC
+# MAGIC -- 配列関数の例
+# MAGIC SELECT id, name, size(values) AS num_values, explode(values) AS value
+# MAGIC FROM test_table
+# MAGIC WHERE size(values) > 2;
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC
+# MAGIC 上記のSQLコードが行っているのは、まずテーブルを作成し、配列データを含む行を追加することである。次に、**`size`**関数を用いて配列の要素数をカウントし、**`explode`**関数を用いて配列を複数の行に分解している。
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC
+# MAGIC
+# MAGIC #### Python
+# MAGIC 次に、Pythonコードを用いて同様の操作を行う方法を示す。以下のコードは、DatabricksのNotebook上で動作するようになっている。
+# MAGIC
+
+# COMMAND ----------
+
+
+from pyspark.sql import SparkSession
+from pyspark.sql.functions import array, size, explode
+
+# Sparkセッションの作成
+spark = SparkSession.builder.appName("ArrayFunctionExample").getOrCreate()
+
+# データの作成
+data = [
+    (1, 'Alice', [10, 20, 30]),
+    (2, 'Bob', [40, 50]),
+    (3, 'Carol', [60, 70, 80, 90])
+]
+
+# データフレームの作成
+columns = ["id", "name", "values"]
+df = spark.createDataFrame(data, columns)
+display(df)
+
+# 配列関数の適用
+exploded_df = df.withColumn("value", explode(df["values"]))
+display(exploded_df)
+
+
+# 結果の表示
+result_df = exploded_df.where(size(df["values"]) > 2)
+display(result_df)
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC
+# MAGIC 上記のPythonコードでは、まずSparkセッションを作成し、次に必要なデータフレームを構築している。その後、 **`explode`** 関数を用いて配列を複数の行に分解し、 **`size`** 関数を使って配列の要素数をカウントしている。また、Databricksの特有操作として **`display`** 関数を用いてデータフレーム内容を表示している。
+# MAGIC
+# MAGIC これらの例を通じて、 **`array`** 関数を利用するメリットは、配列操作を用いることでデータの柔軟な操作が可能になる点である。特に、データの分解や集約が簡潔かつ効率的に行えるという利点が強調される。
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC ### 配列変換の操作
+# MAGIC
+# MAGIC Spark SQL および PySpark では、 **`collect_set`** 、 **`flatten`** および **`array_distinct`** といった関数を使用することで、配列操作において重複した要素の削除や多次元配列の一次元配列への変換を簡単に行うことができる。これらの関数を組み合わせることで、複雑なデータ処理を効率的に行うことが可能である。
+# MAGIC
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC
+# MAGIC #### SQL
+# MAGIC 以下のSQLコードは、テーブルを作成しデータを挿入して、配列変換操作の例を示す。
+
+# COMMAND ----------
+
+# MAGIC %sql
+# MAGIC
+# MAGIC -- テーブルの作成
+# MAGIC CREATE OR REPLACE TEMP VIEW exploded_events AS
+# MAGIC SELECT 1 AS user_id, 'view' AS event_name, named_struct('item_id', 10) AS items
+# MAGIC UNION ALL
+# MAGIC SELECT 1, 'click', named_struct('item_id', 20)
+# MAGIC UNION ALL
+# MAGIC SELECT 1, 'view', named_struct('item_id', 10)
+# MAGIC UNION ALL
+# MAGIC SELECT 2, 'purchase', named_struct('item_id', 30)
+# MAGIC UNION ALL
+# MAGIC SELECT 2, 'add_to_cart', named_struct('item_id', 30)
+# MAGIC UNION ALL
+# MAGIC SELECT 2, 'view', named_struct('item_id', 40)
+# MAGIC UNION ALL
+# MAGIC SELECT 3, 'view', named_struct('item_id', 50);
+# MAGIC
+# MAGIC select * from exploded_events;
+# MAGIC
+
+# COMMAND ----------
+
+# MAGIC %sql
+# MAGIC
+# MAGIC -- 配列変換操作の例
+# MAGIC
+# MAGIC -- collect_set() は、配列内のフィールドを含む、フィールドの一意の値を収集します。
+# MAGIC -- flatten() は、複数の配列を 1 つの配列に結合します。
+# MAGIC -- array_distinct() は配列から重複した要素を削除します。
+# MAGIC
+# MAGIC SELECT user_id,
+# MAGIC   collect_set(event_name) AS event_history,
+# MAGIC   array_distinct(collect_list(items.item_id)) AS cart_history,
+# MAGIC   flatten(collect_list(array(items.item_id))) AS cart_history2
+# MAGIC FROM exploded_events
+# MAGIC GROUP BY user_id;
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC
+# MAGIC このSQLコードでは、 **`collect_set`** 関数を使用して各ユーザーが行ったイベントおよびアイテムIDの一意のコレクションを作成し、次に **`flatten`** 関数を適用して多次元配列を一次元配列に変換し、最後に **`array_distinct`** 関数を使用して配列から重複した要素を削除している。
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC
+# MAGIC #### Python
+# MAGIC 次に、Pythonコードを用いて同様の操作を行う方法を示す。以下のコードは、DatabricksのNotebook上で動作するようになっている。
+# MAGIC
+
+# COMMAND ----------
+
+from pyspark.sql import SparkSession
+from pyspark.sql.functions import array, struct, collect_set, flatten, array_distinct, collect_list
+
+# Sparkセッションの作成
+spark = SparkSession.builder.appName("ArrayTransformationExample").getOrCreate()
+
+# データの作成
+data = [
+    (1, 'view', {"item_id": 10}),
+    (1, 'click', {"item_id": 20}),
+    (1, 'view', {"item_id": 10}),
+    (2, 'purchase', {"item_id": 30}),
+    (2, 'add_to_cart', {"item_id": 30}),
+    (2, 'view', {"item_id": 40}),
+    (3, 'view', {"item_id": 50})
+]
+
+# データフレームの作成
+columns = ["user_id", "event_name", "items"]
+df = spark.createDataFrame(data, columns)
+display(df)
+
+# 配列変換操作の適用
+result_df = df.groupBy("user_id") \
+    .agg(
+        collect_set("event_name").alias("event_history"),
+        array_distinct(flatten(collect_list(array("items.item_id")))).alias("cart_history")
+    )
+
+# 結果の表示
+display(result_df)
+
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC
+# MAGIC **`collect_list`** 関数を さらに **`array`** 関数を用いて要素を包むことで、**`flatten`** が要求する二重配列 **`ARRAY<ARRAY<T>>`** を作成している。  
+# MAGIC コードでは、以下を実行:
+# MAGIC
+# MAGIC 1. 各ユーザが行ったイベント名の一意のセットを **`collect_set`** で集計。
+# MAGIC 2. 各ユーザの全アイテムIDのリストを **`collect_list`** と **`array`** 関数で集計し、これに **`flatten`** を適用して一次元配列に変換。
+# MAGIC 3. 最後に、**`array_distinct`** 関数を適用して、重複を排除した一意のアイテムIDのリストを取得。
+# MAGIC
