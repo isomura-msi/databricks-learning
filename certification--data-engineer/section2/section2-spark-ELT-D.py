@@ -739,3 +739,331 @@ df = df.withColumn('email_address', extract_email_udf(df['info']))
 
 # 結果の表示
 display(df)
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC ## ● ドット構文を利用して、ネストされたデータフィールドを抽出する。
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC ### ネストされたデータフィールドの抽出
+# MAGIC ネストされたデータフィールドは、JSONデータや構造化データを扱う際に頻繁に利用され、特定のフィールドをキーを用いてアクセスする。Databricksでは、ドット（.）構文およびコロン（:）構文を使用してこれらのフィールドにアクセスすることが可能である。
+# MAGIC
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC
+# MAGIC #### SQL
+# MAGIC Databricks SQLでは、ドット構文を利用してネストされたデータフィールドを抽出することができる。以下に例を示す。
+# MAGIC
+# MAGIC データテーブルとデータの作成：
+
+# COMMAND ----------
+
+# MAGIC %sql
+# MAGIC
+# MAGIC -- テーブル作成
+# MAGIC CREATE OR REPLACE TEMPORARY VIEW events_strings AS
+# MAGIC SELECT string(key) key, string(value) value 
+# MAGIC FROM VALUES
+# MAGIC   ('UA000000107384205', '{"device":"macOS","ecommerce":{},"event_name":"checkout","event_previous_timestamp":1593880801027797,"event_timestamp":1593880822506642,"geo":{"city":"Traverse City","state":"MI"},"items":[{"item_id":"M_STAN_T","item_name":"Standard Twin Mattress","item_revenue_in_usd":595.0,"price_in_usd":595.0,"quantity":1}],"traffic_source":"google","user_first_touch_timestamp":1593879413256859,"user_id":"UA000000107384208"}'),
+# MAGIC   ('UA000000107388621', '{"device":"Windows","ecommerce":{},"event_name":"email_coupon","event_previous_timestamp":1593880770092554,"event_timestamp":1593880829320848,"geo":{"city":"Hickory","state":"NC"},"items":[{"coupon":"NEWBED10","item_id":"M_STAN_F","item_name":"Standard Full Mattress","item_revenue_in_usd":850.5,"price_in_usd":945.0,"quantity":1}],"traffic_source":"direct","user_first_touch_timestamp":159387985037719,"user_id":"UA000000107388621"}')
+# MAGIC AS events_raw(key, value);
+# MAGIC
+# MAGIC
+# MAGIC -- データの確認
+# MAGIC SELECT * FROM events_strings;
+
+# COMMAND ----------
+
+# MAGIC %sql
+# MAGIC
+# MAGIC -- ドット構文を利用してネストされたフィールドを取得
+# MAGIC SELECT 
+# MAGIC   key,
+# MAGIC   get_json_object(value, '$.device') AS device,
+# MAGIC   get_json_object(value, '$.geo.city') AS city,
+# MAGIC   get_json_object(value, '$.geo.state') AS state
+# MAGIC FROM 
+# MAGIC     events_strings;
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC
+# MAGIC #### Python
+# MAGIC DatabricksのPython Notebookでも、ドット構文を用いてネストされたデータフィールドを抽出することができる。以下に例を示す。
+# MAGIC
+
+# COMMAND ----------
+
+
+# DatabricksのNotebookにて利用
+from pyspark.sql import SparkSession
+from pyspark.sql import Row
+from pyspark.sql.functions import get_json_object
+
+# Sparkセッションの作成
+spark = SparkSession.builder.appName("NestedDataExample").getOrCreate()
+
+# データの作成
+data = [
+    ('UA000000107384205', '{"device":"macOS","ecommerce":{},"event_name":"checkout","event_previous_timestamp":1593880801027797,"event_timestamp":1593880822506642,"geo":{"city":"Traverse City","state":"MI"},"items":[{"item_id":"M_STAN_T","item_name":"Standard Twin Mattress","item_revenue_in_usd":595.0,"price_in_usd":595.0,"quantity":1}],"traffic_source":"google","user_first_touch_timestamp":1593879413256859,"user_id":"UA000000107384208"}'),
+    ('UA000000107388621', '{"device":"Windows","ecommerce":{},"event_name":"email_coupon","event_previous_timestamp":1593880770092554,"event_timestamp":1593880829320848,"geo":{"city":"Hickory","state":"NC"},"items":[{"coupon":"NEWBED10","item_id":"M_STAN_F","item_name":"Standard Full Mattress","item_revenue_in_usd":850.5,"price_in_usd":945.0,"quantity":1}],"traffic_source":"direct","user_first_touch_timestamp":159387985037719,"user_id":"UA000000107388621"}')
+]
+
+# DataFrameの作成
+columns = ["key", "value"]
+df = spark.createDataFrame(data, schema=columns)
+display(df)
+
+# COMMAND ----------
+
+
+# ネストされたデータフィールドの抽出
+result_df = df.select(
+    "key",
+    get_json_object("value", "$.device").alias("device"),
+    get_json_object("value", "$.geo.city").alias("city"),
+    get_json_object("value", "$.geo.state").alias("state")
+)
+
+# 結果の表示
+display(result_df)
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC ### コロン構文の例
+# MAGIC コロン構文もネストされたデータフィールドの抽出に利用できる。それぞれの構文は、特定のケースにおける利便性に応じて選択される。
+# MAGIC
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC
+# MAGIC #### SQL
+# MAGIC コロン構文を使用する場合の例示：
+
+# COMMAND ----------
+
+# MAGIC %sql
+# MAGIC
+# MAGIC -- コロン構文
+# MAGIC SELECT 
+# MAGIC   key,
+# MAGIC   get_json_object(value, '$:device') AS device,
+# MAGIC   get_json_object(value, '$:geo.city') AS city,
+# MAGIC   get_json_object(value, '$:geo.state') AS state
+# MAGIC FROM 
+# MAGIC     events_strings;
+
+# COMMAND ----------
+
+# MAGIC %sql
+# MAGIC
+# MAGIC -- コロン構文
+# MAGIC SELECT 
+# MAGIC   key,
+# MAGIC   value:device AS device,
+# MAGIC   value:city AS city,
+# MAGIC   value:state AS state
+# MAGIC FROM 
+# MAGIC     events_strings;
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC
+# MAGIC #### Python
+# MAGIC Pythonの場合、コロン構文を利用してフィールドを抽出する方法もサポートされている。
+
+# COMMAND ----------
+
+
+result_df = df.select(
+    "key",
+    get_json_object("value", "$:device").alias("device"),
+    get_json_object("value", "$:geo.city").alias("city"),
+    get_json_object("value", "$:geo.state").alias("state")
+)
+
+display(result_df)
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC ### ネストされたデータフィールドの絞り込みとソート
+# MAGIC
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC
+# MAGIC #### SQL
+# MAGIC Databricks SQLでは、コロン構文を利用してネストされたデータフィールドを抽出し、フィルタリングおよびソートする方法の追加例を以下に示す。
+# MAGIC
+
+# COMMAND ----------
+
+# MAGIC %sql
+# MAGIC
+# MAGIC -- コロン構文を利用してフィルタリングとソートを行い、ネストされたフィールドを取得
+# MAGIC SELECT 
+# MAGIC   * 
+# MAGIC FROM 
+# MAGIC   events_strings 
+# MAGIC WHERE 
+# MAGIC   -- get_json_object(value, '$.event_name') = 'checkout' 
+# MAGIC   value:event_name = 'checkout' 
+# MAGIC ORDER BY 
+# MAGIC   key 
+# MAGIC LIMIT 
+# MAGIC   1;
+
+# COMMAND ----------
+
+# MAGIC %sql
+# MAGIC -- スキーマを使用してJSONを構造体に変換
+# MAGIC CREATE OR REPLACE TEMPORARY VIEW events_strings AS
+# MAGIC SELECT 
+# MAGIC   string(key) key, 
+# MAGIC   from_json(string(value), 'STRUCT<device: STRING, ecommerce: STRUCT<>, event_name: STRING, event_previous_timestamp: BIGINT, event_timestamp: BIGINT, geo: STRUCT<city: STRING, state: STRING>, items: ARRAY<STRUCT<coupon: STRING, item_id: STRING, item_name: STRING, item_revenue_in_usd: DOUBLE, price_in_usd: DOUBLE, quantity: INT>>, traffic_source: STRING, user_first_touch_timestamp: BIGINT, user_id: STRING>') value 
+# MAGIC FROM VALUES
+# MAGIC   ('UA000000107384205', '{"device":"macOS","ecommerce":{},"event_name":"checkout","event_previous_timestamp":1593880801027797,"event_timestamp":1593880822506642,"geo":{"city":"Traverse City","state":"MI"},"items":[{"item_id":"M_STAN_T","item_name":"Standard Twin Mattress","item_revenue_in_usd":595.0,"price_in_usd":595.0,"quantity":1}],"traffic_source":"google","user_first_touch_timestamp":1593879413256859,"user_id":"UA000000107384208"}'),
+# MAGIC   ('UA000000107388621', '{"device":"Windows","ecommerce":{},"event_name":"email_coupon","event_previous_timestamp":1593880770092554,"event_timestamp":1593880829320848,"geo":{"city":"Hickory","state":"NC"},"items":[{"coupon":"NEWBED10","item_id":"M_STAN_F","item_name":"Standard Full Mattress","item_revenue_in_usd":850.5,"price_in_usd":945.0,"quantity":1}],"traffic_source":"direct","user_first_touch_timestamp":159387985037719,"user_id":"UA000000107388621"}')
+# MAGIC AS events_raw(key, value);
+# MAGIC
+# MAGIC -- データの確認
+# MAGIC SELECT * FROM events_strings;
+# MAGIC
+
+# COMMAND ----------
+
+# MAGIC %sql
+# MAGIC
+# MAGIC -- ネストされたフィールドの直接抽出
+# MAGIC SELECT 
+# MAGIC   key,
+# MAGIC   value.device AS device,
+# MAGIC   value.geo.city AS city,
+# MAGIC   value.geo.state AS state
+# MAGIC FROM 
+# MAGIC   events_strings
+# MAGIC WHERE
+# MAGIC   value.device = 'macOS'
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC
+# MAGIC #### Python
+# MAGIC DatabricksのPython Notebookでも、`.where()` メソッドや `.orderBy()`, `.limit()` メソッドを用いて同様の操作が可能である。以下にPythonの追加例を示す。
+# MAGIC
+
+# COMMAND ----------
+
+
+# DatabricksのNotebookにて利用
+from pyspark.sql.functions import get_json_object
+
+# DataFrameの作成（前述と同じ）
+data = [
+    ('UA000000107384205', '{"device":"macOS","ecommerce":{},"event_name":"checkout","event_previous_timestamp":1593880801027797,"event_timestamp":1593880822506642,"geo":{"city":"Traverse City","state":"MI"},"items":[{"item_id":"M_STAN_T","item_name":"Standard Twin Mattress","item_revenue_in_usd":595.0,"price_in_usd":595.0,"quantity":1}],"traffic_source":"google","user_first_touch_timestamp":1593879413256859,"user_id":"UA000000107384208"}'),
+    ('UA000000107388621', '{"device":"Windows","ecommerce":{},"event_name":"email_coupon","event_previous_timestamp":1593880770092554,"event_timestamp":1593880829320848,"geo":{"city":"Hickory","state":"NC"},"items":[{"coupon":"NEWBED10","item_id":"M_STAN_F","item_name":"Standard Full Mattress","item_revenue_in_usd":850.5,"price_in_usd":945.0,"quantity":1}],"traffic_source":"direct","user_first_touch_timestamp":159387985037719,"user_id":"UA000000107388621"}')
+]
+
+columns = ["key", "value"]
+df = spark.createDataFrame(data, schema=columns)
+display(df)
+
+
+# COMMAND ----------
+
+
+# ネストされたデータフィールドの絞り込みとソート
+# result_df = df.where(get_json_object("value", "$.event_name") == 'checkout') \
+result_df = df.where("value:event_name == 'checkout'") \
+              .orderBy("key") \
+              .limit(1)
+
+# 結果の表示
+display(result_df)
+
+# COMMAND ----------
+
+from pyspark.sql import SparkSession
+from pyspark.sql.functions import col, from_json
+from pyspark.sql.types import StructType, StructField, StringType, DoubleType, LongType, IntegerType, ArrayType
+
+# Sparkセッションの作成
+spark = SparkSession.builder.appName("NestedDataExample").getOrCreate()
+
+# スキーマの定義
+schema = StructType([
+    StructField("device", StringType(), True),
+    StructField("ecommerce", StructType([]), True),
+    StructField("event_name", StringType(), True),
+    StructField("event_previous_timestamp", LongType(), True),
+    StructField("event_timestamp", LongType(), True),
+    StructField("geo", StructType([
+        StructField("city", StringType(), True),
+        StructField("state", StringType(), True)
+    ]), True),
+    StructField("items", ArrayType(StructType([
+        StructField("coupon", StringType(), True),
+        StructField("item_id", StringType(), True),
+        StructField("item_name", StringType(), True),
+        StructField("item_revenue_in_usd", DoubleType(), True),
+        StructField("price_in_usd", DoubleType(), True),
+        StructField("quantity", IntegerType(), True)
+    ])), True),
+    StructField("traffic_source", StringType(), True),
+    StructField("user_first_touch_timestamp", LongType(), True),
+    StructField("user_id", StringType(), True)
+])
+
+# データの作成
+data = [
+    ('UA000000107384205', '{"device":"macOS","ecommerce":{},"event_name":"checkout","event_previous_timestamp":1593880801027797,"event_timestamp":1593880822506642,"geo":{"city":"Traverse City","state":"MI"},"items":[{"item_id":"M_STAN_T","item_name":"Standard Twin Mattress","item_revenue_in_usd":595.0,"price_in_usd":595.0,"quantity":1}],"traffic_source":"google","user_first_touch_timestamp":1593879413256859,"user_id":"UA000000107384208"}'),
+    ('UA000000107388621', '{"device":"Windows","ecommerce":{},"event_name":"email_coupon","event_previous_timestamp":1593880770092554,"event_timestamp":1593880829320848,"geo":{"city":"Hickory","state":"NC"},"items":[{"coupon":"NEWBED10","item_id":"M_STAN_F","item_name":"Standard Full Mattress","item_revenue_in_usd":850.5,"price_in_usd":945.0,"quantity":1}],"traffic_source":"direct","user_first_touch_timestamp":159387985037719,"user_id":"UA000000107388621"}')
+]
+
+columns = ["key", "value"]
+df = spark.createDataFrame(data, schema=columns)
+
+
+display(df)
+
+
+# COMMAND ----------
+
+# JSONをパースして構造体に変換
+df = df.withColumn("value", from_json(col("value"), schema))
+
+# 結果の表示
+display(df)
+
+# COMMAND ----------
+
+# ネストされたフィールドの抽出
+result_df = df.select(
+    "key",
+    col("value.device").alias("device"),
+    col("value.geo.city").alias("city"),
+    col("value.geo.state").alias("state")
+)
+
+# 絞り込み
+result_df_filtered = result_df.where(col("device") == 'Windows')
+
+# 結果の表示
+display(result_df_filtered)
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC
