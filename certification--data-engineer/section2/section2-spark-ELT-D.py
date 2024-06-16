@@ -1066,4 +1066,119 @@ display(result_df_filtered)
 # COMMAND ----------
 
 # MAGIC %md
+# MAGIC ## ● JSON 文字列を解析して構造体にする。
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC ### 概要
+# MAGIC Databricksにおいて、JSON文字列を解析して構造体に変換する方法は、`schema_of_json`および`from_json`関数を利用することで実現できる。この手法を用いることで、ネストされたデータを効率的に処理し、必要なフィールドを抽出することが可能となる。
 # MAGIC
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC
+# MAGIC #### 使用する関数:
+# MAGIC - **`schema_of_json`**: JSON文字列の例から派生したスキーマを返す。
+# MAGIC - **`from_json`**: 指定されたスキーマを使用して、JSON文字列を含む列を構造体型に解析する。
+# MAGIC
+# MAGIC 以下に、SQLとPythonの例を示す。
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC
+# MAGIC
+# MAGIC ### SQL
+# MAGIC まず、Databricks SQLを使用して、JSON文字列を構造体に変換する方法を示す。これには、テーブルを作成し、JSONデータのスキーマを取得し、そのスキーマを使用して解析を行う例が含まれる。
+# MAGIC
+# MAGIC データテーブルとデータの作成：
+
+# COMMAND ----------
+
+# MAGIC %sql
+# MAGIC
+# MAGIC -- スキーマを定義してテーブルを作成
+# MAGIC CREATE OR REPLACE TEMPORARY VIEW events_strings AS
+# MAGIC SELECT 
+# MAGIC   string(key) key, 
+# MAGIC   string(value) value 
+# MAGIC FROM VALUES
+# MAGIC   ('UA000000107384205', '{"device":"macOS","ecommerce":{},"event_name":"checkout","event_previous_timestamp":1593880801027797,"event_timestamp":1593880822506642,"geo":{"city":"Traverse City","state":"MI"},"items":[{"item_id":"M_STAN_T","item_name":"Standard Twin Mattress","item_revenue_in_usd":595.0,"price_in_usd":595.0,"quantity":1}],"traffic_source":"google","user_first_touch_timestamp":1593879413256859,"user_id":"UA000000107384208"}'),
+# MAGIC   ('UA000000107388621', '{"device":"Windows","ecommerce":{},"event_name":"email_coupon","event_previous_timestamp":1593880770092554,"event_timestamp":1593880829320848,"geo":{"city":"Hickory","state":"NC"},"items":[{"coupon":"NEWBED10","item_id":"M_STAN_F","item_name":"Standard Full Mattress","item_revenue_in_usd":850.5,"price_in_usd":945.0,"quantity":1}],"traffic_source":"direct","user_first_touch_timestamp":159387985037719,"user_id":"UA000000107388621"}'),
+# MAGIC   ('UA000000107389999', '{"device":"Linux","ecommerce":{"purchase_revenue_in_usd":1075.5,"total_item_quantity":1,"unique_items":1},"event_name":"finalize","event_previous_timestamp":1593879231210816,"event_timestamp":1593879335779563,"geo":{"city":"Houston","state":"TX"},"items":[{"coupon":"NEWBED10","item_id":"M_STAN_K","item_name":"Standard King Mattress","item_revenue_in_usd":1075.5,"price_in_usd":1195.0,"quantity":1}],"traffic_source":"email","user_first_touch_timestamp":1593454417513109,"user_id":"UA000000106116176"}'),
+# MAGIC   ('UA000000108501234', '{"device":"Android","ecommerce":{"purchase_revenue_in_usd":999.9,"total_item_quantity":2,"unique_items":2},"event_name":"purchase","event_previous_timestamp":1627819284000,"event_timestamp":1627819384000,"geo":{"city":"San Francisco","state":"CA"},"items":[{"coupon":"SUMMER21","item_id":"S_MAT_Q","item_name":"Summer Queen Mattress","item_revenue_in_usd":599.9,"price_in_usd":750.0,"quantity":1},{"coupon":"SUMMER21","item_id":"P_SUMMER","item_name":"Summer Pillow","item_revenue_in_usd":400.0,"price_in_usd":500.0,"quantity":1}],"traffic_source":"organic","user_first_touch_timestamp":1627800000000,"user_id":"UA000000109999999"}'),
+# MAGIC   ('UA000000105678345', '{"device":"iOS","ecommerce":{"purchase_revenue_in_usd":850.0,"total_item_quantity":1,"unique_items":1},"event_name":"purchase","event_previous_timestamp":1612319284000,"event_timestamp":1612319384000,"geo":{"city":"New York","state":"NY"},"items":[{"coupon":"SPRING21","item_id":"S_MAT_T","item_name":"Spring Twin Mattress","item_revenue_in_usd":850.0,"price_in_usd":900.0,"quantity":1}],"traffic_source":"organic","user_first_touch_timestamp":1612300000000,"user_id":"UA000000107776543"}')
+# MAGIC AS events_raw(key, value);
+# MAGIC
+# MAGIC -- データの確認
+# MAGIC SELECT * FROM events_strings;
+
+# COMMAND ----------
+
+# MAGIC %sql
+# MAGIC
+# MAGIC -- スキーマを取得
+# MAGIC SELECT schema_of_json('{"device":"Linux","ecommerce":{"purchase_revenue_in_usd":1075.5,"total_item_quantity":1,"unique_items":1},"event_name":"finalize","event_previous_timestamp":1593879231210816,"event_timestamp":1593879335779563,"geo":{"city":"Houston","state":"TX"},"items":[{"coupon":"NEWBED10","item_id":"M_STAN_K","item_name":"Standard King Mattress","item_revenue_in_usd":1075.5,"price_in_usd":1195.0,"quantity":1}],"traffic_source":"email","user_first_touch_timestamp":1593454417513109,"user_id":"UA000000106116176"}') AS schema;
+# MAGIC
+
+# COMMAND ----------
+
+# MAGIC %sql
+# MAGIC
+# MAGIC -- JSON文字列を解析して構造体として展開
+# MAGIC CREATE OR REPLACE TEMP VIEW parsed_events AS 
+# MAGIC SELECT json.* 
+# MAGIC FROM (
+# MAGIC   SELECT from_json(value, 'STRUCT<device: STRING, ecommerce: STRUCT<purchase_revenue_in_usd: DOUBLE, total_item_quantity: BIGINT, unique_items: BIGINT>, event_name: STRING, event_previous_timestamp: BIGINT, event_timestamp: BIGINT, geo: STRUCT<city: STRING, state: STRING>, items: ARRAY<STRUCT<coupon: STRING, item_id: STRING, item_name: STRING, item_revenue_in_usd: DOUBLE, price_in_usd: DOUBLE, quantity: BIGINT>>, traffic_source: STRING, user_first_touch_timestamp: BIGINT, user_id: STRING>') AS json 
+# MAGIC   FROM events_strings
+# MAGIC );
+# MAGIC
+# MAGIC -- フラット化されたデータの確認
+# MAGIC SELECT * FROM parsed_events;
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC
+# MAGIC ### Python
+# MAGIC 次に、Pythonを使用して同じ操作を行うアプローチを示す。DatabricksのNotebookで実行できるように、テーブルの作成およびデータの解析方法を示す。
+# MAGIC
+# MAGIC データの作成：
+
+# COMMAND ----------
+
+
+from pyspark.sql import SparkSession
+from pyspark.sql.functions import from_json, schema_of_json, col
+
+# Sparkセッションの作成
+spark = SparkSession.builder.appName("NestedDataExample").getOrCreate()
+
+# データの作成
+data = [
+    ('UA000000107384205', '{"device":"macOS","ecommerce":{},"event_name":"checkout","event_previous_timestamp":1593880801027797,"event_timestamp":1593880822506642,"geo":{"city":"Traverse City","state":"MI"},"items":[{"item_id":"M_STAN_T","item_name":"Standard Twin Mattress","item_revenue_in_usd":595.0,"price_in_usd":595.0,"quantity":1}],"traffic_source":"google","user_first_touch_timestamp":1593879413256859,"user_id":"UA000000107384208"}'),
+    ('UA000000107388621', '{"device":"Windows","ecommerce":{},"event_name":"email_coupon","event_previous_timestamp":1593880770092554,"event_timestamp":1593880829320848,"geo":{"city":"Hickory","state":"NC"},"items":[{"coupon":"NEWBED10","item_id":"M_STAN_F","item_name":"Standard Full Mattress","item_revenue_in_usd":850.5,"price_in_usd":945.0,"quantity":1}],"traffic_source":"direct","user_first_touch_timestamp":159387985037719,"user_id":"UA000000107388621"}'),
+    ('UA000000107389999', '{"device":"Linux","ecommerce":{"purchase_revenue_in_usd":1075.5,"total_item_quantity":1,"unique_items":1},"event_name":"finalize","event_previous_timestamp":1593879231210816,"event_timestamp":1593879335779563,"geo":{"city":"Houston","state":"TX"},"items":[{"coupon":"NEWBED10","item_id":"M_STAN_K","item_name":"Standard King Mattress","item_revenue_in_usd":1075.5,"price_in_usd":1195.0,"quantity":1}],"traffic_source":"email","user_first_touch_timestamp":1593454417513109,"user_id":"UA000000106116176"}'),
+    ('UA000000108501234', '{"device":"Android","ecommerce":{"purchase_revenue_in_usd":999.9,"total_item_quantity":2,"unique_items":2},"event_name":"purchase","event_previous_timestamp":1627819284000,"event_timestamp":1627819384000,"geo":{"city":"San Francisco","state":"CA"},"items":[{"coupon":"SUMMER21","item_id":"S_MAT_Q","item_name":"Summer Queen Mattress","item_revenue_in_usd":599.9,"price_in_usd":750.0,"quantity":1},{"coupon":"SUMMER21","item_id":"P_SUMMER","item_name":"Summer Pillow","item_revenue_in_usd":400.0,"price_in_usd":500.0,"quantity":1}],"traffic_source":"organic","user_first_touch_timestamp":1627800000000,"user_id":"UA000000109999999"}'),
+    ('UA000000105678345', '{"device":"iOS","ecommerce":{"purchase_revenue_in_usd":850.0,"total_item_quantity":1,"unique_items":1},"event_name":"purchase","event_previous_timestamp":1612319284000,"event_timestamp":1612319384000,"geo":{"city":"New York","state":"NY"},"items":[{"coupon":"SPRING21","item_id":"S_MAT_T","item_name":"Spring Twin Mattress","item_revenue_in_usd":850.0,"price_in_usd":900.0,"quantity":1}],"traffic_source":"organic","user_first_touch_timestamp":1612300000000,"user_id":"UA000000107776543"}')
+]
+
+columns = ["key", "value"]
+df = spark.createDataFrame(data, schema=columns)
+display(df)
+
+
+# COMMAND ----------
+
+
+# スキーマの取得
+json_string = '{"device":"Linux","ecommerce":{"purchase_revenue_in_usd":1075.5,"total_item_quantity":1,"unique_items":1},"event_name":"finalize","event_previous_timestamp":1593879231210816,"event_timestamp":1593879335779563,"geo":{"city":"Houston","state":"TX"},"items":[{"coupon":"NEWBED10","item_id":"M_STAN_K","item_name":"Standard King Mattress","item_revenue_in_usd":1075.5,"price_in_usd":1195.0,"quantity":1}],"traffic_source":"email","user_first_touch_timestamp":1593454417513109,"user_id":"UA000000106116176"}'
+schema = schema_of_json(json_string)
+
+# JSONデータの解析および構造体への変換
+parsed_df = df.select(from_json(col("value"), schema).alias("json")).select("json.*")
+
+# 結果の表示
+display(parsed_df)
