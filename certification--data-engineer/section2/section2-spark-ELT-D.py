@@ -1398,3 +1398,341 @@ display(result_df)
 # MAGIC 2. 各ユーザの全アイテムIDのリストを **`collect_list`** と **`array`** 関数で集計し、これに **`flatten`** を適用して一次元配列に変換。
 # MAGIC 3. 最後に、 **`array_distinct`** 関数を適用して、重複を排除した一意のアイテムIDのリストを取得。
 # MAGIC
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC ## ● 結合クエリーに基づいて返される結果を特定する
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC ### DatabricksにおけるJOIN操作の詳細
+# MAGIC
+# MAGIC JOIN操作とは、SQLやDataFrameにおいて複数のテーブルを結合する際に使用する重要な操作である。Databricksにおいても、以下のようなさまざまなJOIN操作が用意されている。
+# MAGIC
+# MAGIC 1. Inner Join
+# MAGIC 2. Outer Join (Full Outer Join)
+# MAGIC 3. Left Join
+# MAGIC 4. Right Join
+# MAGIC 5. Anti Join
+# MAGIC 6. Semi Join
+# MAGIC 7. Cross Join
+# MAGIC
+# MAGIC 各JOINの具体的な例は以下のとおりである。
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC ### 1. Inner Join
+# MAGIC 共通のキーを持つ行のみを結合する。
+# MAGIC
+
+# COMMAND ----------
+
+# MAGIC %sql
+# MAGIC -- テーブル作成
+# MAGIC CREATE OR REPLACE TEMP VIEW sales AS
+# MAGIC SELECT 1 as transaction_id, array(named_struct('item_id', 'item1', 'price', 10)) as items UNION ALL
+# MAGIC SELECT 2, array(named_struct('item_id', 'item2', 'price', 20)) UNION ALL
+# MAGIC SELECT 3, array(named_struct('item_id', 'item3', 'price', 30));
+# MAGIC
+# MAGIC select * from sales;
+# MAGIC
+
+# COMMAND ----------
+
+# MAGIC %sql
+# MAGIC
+# MAGIC CREATE OR REPLACE TEMP VIEW item_lookup AS
+# MAGIC SELECT 'item1' as item_id, 'description1' as description UNION ALL
+# MAGIC SELECT 'item2', 'description2' UNION ALL
+# MAGIC SELECT 'item3', 'description3' UNION ALL
+# MAGIC SELECT 'item4', 'description4';
+# MAGIC
+# MAGIC select * from item_lookup;
+# MAGIC
+
+# COMMAND ----------
+
+# MAGIC %sql
+# MAGIC SELECT *, explode(items) AS item FROM sales;
+
+# COMMAND ----------
+
+# MAGIC %sql
+# MAGIC
+# MAGIC CREATE OR REPLACE TEMP VIEW item_purchases AS
+# MAGIC SELECT * 
+# MAGIC FROM (SELECT *, explode(items) AS item FROM sales) a
+# MAGIC INNER JOIN item_lookup b
+# MAGIC ON a.item.item_id = b.item_id;
+# MAGIC
+# MAGIC select * from item_purchases;
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC #### Python
+
+# COMMAND ----------
+
+
+from pyspark.sql.functions import explode
+
+# データフレーム作成
+sales_data = [
+    (1, [{"item_id": "item1", "price": 10}]),
+    (2, [{"item_id": "item2", "price": 20}]),
+    (3, [{"item_id": "item3", "price": 30}])
+]
+salesDF = spark.createDataFrame(sales_data, ["transaction_id", "items"])
+display(salesDF)
+
+
+items_data = [
+    ("item1", "description1"),
+    ("item2", "description2"),
+    ("item3", "description3"),
+    ("item4", "description4")
+]
+itemsDF = spark.createDataFrame(items_data, ["item_id", "description"])
+display(itemsDF)
+
+
+salesDF.createOrReplaceTempView("sales")
+itemsDF.createOrReplaceTempView("item_lookup")
+
+exploded_salesDF = (spark
+    .table("sales")
+    .withColumn("item", explode("items"))
+)
+display(exploded_salesDF)
+
+
+item_purchasesDF = (exploded_salesDF
+    .join(itemsDF, exploded_salesDF.item.item_id == itemsDF.item_id)
+)
+display(item_purchasesDF)
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC
+# MAGIC ### 2. Outer Join (Full Outer Join)
+# MAGIC 両方のテーブルからすべての行を結合する。
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC #### SQL
+
+# COMMAND ----------
+
+# MAGIC %sql
+# MAGIC CREATE OR REPLACE TEMP VIEW item_purchases_outer AS
+# MAGIC SELECT * 
+# MAGIC FROM (SELECT *, explode(items) AS item FROM sales) a
+# MAGIC FULL OUTER JOIN item_lookup b
+# MAGIC ON a.item.item_id = b.item_id;
+# MAGIC
+# MAGIC select * from item_purchases_outer;
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC #### Python
+
+# COMMAND ----------
+
+
+item_purchases_outerDF = (exploded_salesDF
+    .join(itemsDF, exploded_salesDF.item.item_id == itemsDF.item_id, "outer")
+)
+
+display(item_purchases_outerDF)
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC
+# MAGIC ### 3. Left Join
+# MAGIC 左のテーブルのすべての行と、右のテーブルの一致する行を結合する。
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC #### SQL
+
+# COMMAND ----------
+
+# MAGIC
+# MAGIC %sql
+# MAGIC CREATE OR REPLACE TEMP VIEW item_purchases_left AS
+# MAGIC SELECT * 
+# MAGIC FROM (SELECT *, explode(items) AS item FROM sales) a
+# MAGIC LEFT JOIN item_lookup b
+# MAGIC ON a.item.item_id = b.item_id;
+# MAGIC
+# MAGIC select * from item_purchases_left;
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC #### Python
+
+# COMMAND ----------
+
+
+item_purchases_leftDF = (exploded_salesDF
+    .join(itemsDF, exploded_salesDF.item.item_id == itemsDF.item_id, "left")
+)
+
+display(item_purchases_leftDF)
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC ### 4. Right Join
+# MAGIC 右のテーブルのすべての行と、左のテーブルの一致する行を結合する。
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC #### SQL
+
+# COMMAND ----------
+
+# MAGIC
+# MAGIC %sql
+# MAGIC CREATE OR REPLACE TEMP VIEW item_purchases_right AS
+# MAGIC SELECT * 
+# MAGIC FROM (SELECT *, explode(items) AS item FROM sales) a
+# MAGIC RIGHT JOIN item_lookup b
+# MAGIC ON a.item.item_id = b.item_id;
+# MAGIC
+# MAGIC select * from item_purchases_right;
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC #### Python
+
+# COMMAND ----------
+
+
+item_purchases_rightDF = (exploded_salesDF
+    .join(itemsDF, exploded_salesDF.item.item_id == itemsDF.item_id, "right")
+)
+
+display(item_purchases_rightDF)
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC ### 5. Anti Join
+# MAGIC 左のテーブルでキーが一致しない行を返す。
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC #### SQL
+
+# COMMAND ----------
+
+# MAGIC
+# MAGIC %sql
+# MAGIC CREATE OR REPLACE TEMP VIEW item_purchases_anti AS
+# MAGIC SELECT * 
+# MAGIC FROM (SELECT *, explode(items) AS item FROM sales) a
+# MAGIC LEFT ANTI JOIN item_lookup b
+# MAGIC ON a.item.item_id = b.item_id;
+# MAGIC
+# MAGIC select * from item_purchases_anti;
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC #### Python
+
+# COMMAND ----------
+
+
+item_purchases_antiDF = (exploded_salesDF
+    .join(itemsDF, exploded_salesDF.item.item_id == itemsDF.item_id, "left_anti")
+)
+
+display(item_purchases_antiDF)
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC ### 6. Semi Join
+# MAGIC 左のテーブルでキーが一致する行を返すが、右のテーブルのデータは含めない。
+# MAGIC
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC #### SQL
+
+# COMMAND ----------
+
+# MAGIC %sql
+# MAGIC CREATE OR REPLACE TEMP VIEW item_purchases_semi AS
+# MAGIC SELECT * 
+# MAGIC FROM (SELECT *, explode(items) AS item FROM sales) a
+# MAGIC LEFT SEMI JOIN item_lookup b
+# MAGIC ON a.item.item_id = b.item_id;
+# MAGIC
+# MAGIC select * from item_purchases_semi;
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC #### Python
+
+# COMMAND ----------
+
+
+item_purchases_semiDF = (exploded_salesDF
+    .join(itemsDF, exploded_salesDF.item.item_id == itemsDF.item_id, "left_semi")
+)
+
+display(item_purchases_semiDF)
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC ### 7. Cross Join
+# MAGIC すべての行の組み合わせを生成する。
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC #### SQL
+
+# COMMAND ----------
+
+# MAGIC
+# MAGIC %sql
+# MAGIC CREATE OR REPLACE TEMP VIEW item_purchases_cross AS
+# MAGIC SELECT * 
+# MAGIC FROM (SELECT *, explode(items) AS item FROM sales) a
+# MAGIC CROSS JOIN item_lookup b;
+# MAGIC
+# MAGIC select * from item_purchases_cross;
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC #### Python
+
+# COMMAND ----------
+
+
+item_purchases_crossDF = (exploded_salesDF
+    .crossJoin(itemsDF)
+)
+
+display(item_purchases_crossDF)

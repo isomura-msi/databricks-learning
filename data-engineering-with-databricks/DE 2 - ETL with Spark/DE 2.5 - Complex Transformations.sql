@@ -235,7 +235,7 @@ FROM (SELECT *, explode(items) AS item FROM sales) a
 INNER JOIN item_lookup b
 ON a.item.item_id = b.item_id;
 
-SELECT * FROM item_purchases
+SELECT * FROM item_purchases LIMIT 30
 
 -- COMMAND ----------
 
