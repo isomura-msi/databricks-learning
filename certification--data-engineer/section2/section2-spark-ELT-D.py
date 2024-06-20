@@ -1736,3 +1736,135 @@ item_purchases_crossDF = (exploded_salesDF
 )
 
 display(item_purchases_crossDF)
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC ## ● ワイド形式からロング形式にデータを変換する手段として PIVOT 句を特定する。
+# MAGIC
+# MAGIC PIVOT句は、ワイド形式のデータをロング形式に変換する手段として有用である。集計関数に基づいて指定されたピボット列の一意の値を複数の列に回転させることで、さまざまな視点からデータを表示可能とする。本節では、DatabricksにおけるPIVOT句の使用方法についてSQLおよびPythonの例を挙げる。
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC ### PIVOT句の基本使用例
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC #### SQL
+# MAGIC
+# MAGIC 以下のSQL例では、item_purchasesテーブルを作成し、その後PIVOT句を使用してピボット操作を実施する。
+# MAGIC
+
+# COMMAND ----------
+
+# MAGIC %sql
+# MAGIC
+# MAGIC -- テーブル作成
+# MAGIC CREATE OR REPLACE TEMP VIEW sales AS
+# MAGIC SELECT
+# MAGIC   '2021-01-01' AS transaction_date, 'a@example.com' AS email, 1 AS quantity, 'P_FOAM_K' AS item_id UNION ALL
+# MAGIC SELECT
+# MAGIC   '2021-01-02', 'b@example.com', 2, 'M_STAN_Q' UNION ALL
+# MAGIC SELECT
+# MAGIC   '2021-01-03', 'c@example.com', 3, 'P_FOAM_S' UNION ALL
+# MAGIC SELECT
+# MAGIC   '2021-01-04', 'a@example.com', 4, 'M_PREM_Q' UNION ALL
+# MAGIC SELECT
+# MAGIC   '2021-01-05', 'b@example.com', 5, 'M_STAN_F';
+# MAGIC
+# MAGIC SELECT * FROM sales LIMIT 10;
+# MAGIC
+
+# COMMAND ----------
+
+# MAGIC %sql
+# MAGIC CREATE OR REPLACE TEMP VIEW item_purchases AS
+# MAGIC SELECT
+# MAGIC   email, 
+# MAGIC   item_id,
+# MAGIC   quantity
+# MAGIC FROM sales;
+# MAGIC
+# MAGIC SELECT * FROM item_purchases LIMIT 10;
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC 次に、PIVOT句を使用してピボット操作を行う。
+
+# COMMAND ----------
+
+# MAGIC %sql
+# MAGIC
+# MAGIC SELECT * FROM (
+# MAGIC   SELECT email, item_id, quantity AS q 
+# MAGIC   FROM item_purchases
+# MAGIC )
+# MAGIC PIVOT (
+# MAGIC   sum(q) FOR item_id IN (
+# MAGIC     'P_FOAM_K',
+# MAGIC     'M_STAN_Q',
+# MAGIC     'P_FOAM_S',
+# MAGIC     'M_PREM_Q',
+# MAGIC     'M_STAN_F'
+# MAGIC   )
+# MAGIC ) LIMIT 10;
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC ####  Python
+# MAGIC
+# MAGIC 以下のPython例では、同様のピボット操作をDataFrameを使用して実施する。
+
+# COMMAND ----------
+
+
+from pyspark.sql import SparkSession
+
+spark = SparkSession.builder.appName("pivot_example").getOrCreate()
+
+# データフレーム作成
+sales_data = [
+    ('2021-01-01', 'a@example.com', 1, 'P_FOAM_K'),
+    ('2021-01-02', 'b@example.com', 2, 'M_STAN_Q'),
+    ('2021-01-03', 'c@example.com', 3, 'P_FOAM_S'),
+    ('2021-01-04', 'a@example.com', 4, 'M_PREM_Q'),
+    ('2021-01-05', 'b@example.com', 5, 'M_STAN_F')
+]
+
+columns = ['transaction_date', 'email', 'quantity', 'item_id']
+salesDF = spark.createDataFrame(sales_data, columns)
+
+display(salesDF)
+
+salesDF.createOrReplaceTempView("sales")
+
+item_purchasesDF = salesDF.select("email", "item_id", "quantity")
+item_purchasesDF.createOrReplaceTempView("item_purchases")
+
+display(item_purchasesDF)
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC 次に、pyspark.sql.functionsを使用してピボット操作を行う。
+
+# COMMAND ----------
+
+
+from pyspark.sql.functions import sum as _sum
+
+pivotDF = item_purchasesDF.groupBy("email").pivot("item_id", ['P_FOAM_K', 'M_STAN_Q', 'P_FOAM_S', 'M_PREM_Q', 'M_STAN_F']).agg(_sum("quantity"))
+display(pivotDF)
+
+# 下記のように、pivot の第二引数に値を羅列しなくても良さそう。
+pivotDF = item_purchasesDF.groupBy("email").pivot("item_id").agg(_sum("quantity"))
+display(pivotDF)
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC
