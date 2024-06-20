@@ -1867,4 +1867,458 @@ display(pivotDF)
 # COMMAND ----------
 
 # MAGIC %md
+# MAGIC ## ● SQL UDF を定義する。
 # MAGIC
+# MAGIC ユーザー定義関数(User-Defined Functions、UDF)は、カスタムSQLロジックを関数としてデータベースに登録できる重要な機能である。これにより、DatabricksでSQLを実行できる場所ならどこでもUDFを再利用できる。以下に、SQLおよびPythonでのUDFの定義方法を示す。
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC ### 1. SQL UDFの定義方法
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC #### 設定とデータ準備
+# MAGIC
+# MAGIC まず、テーブルを作成し、データを準備する。
+# MAGIC
+
+# COMMAND ----------
+
+# MAGIC %sql
+# MAGIC
+# MAGIC CREATE OR REPLACE TEMP VIEW item_lookup AS
+# MAGIC SELECT 'item1' AS item_id, 'item1_name' AS name, 100 AS price UNION ALL
+# MAGIC SELECT 'item2', 'item2_name', 200 UNION ALL
+# MAGIC SELECT 'item3', 'item3_name', 300 UNION ALL
+# MAGIC SELECT 'item4', 'item4_name', 400 UNION ALL
+# MAGIC SELECT 'item5', 'item5_name', 500;
+# MAGIC
+# MAGIC SELECT * FROM item_lookup LIMIT 10;
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC #### UDFの定義
+# MAGIC
+# MAGIC 次に、SQLでUDFを定義する。以下の例では、`sale_announcement`という名前の関数を定義し、これにより指定されたアイテムのセール情報を生成する。
+
+# COMMAND ----------
+
+# MAGIC %sql
+# MAGIC CREATE OR REPLACE FUNCTION sale_announcement(item_name STRING, item_price INT)
+# MAGIC RETURNS STRING
+# MAGIC RETURN concat("The ", item_name, " is on sale for $", round(item_price * 0.8, 0));
+# MAGIC
+# MAGIC SELECT *, sale_announcement(name, price) AS message FROM item_lookup LIMIT 10;
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC ### 2. Python UDFの定義方法
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC #### 設定とデータ準備
+# MAGIC
+# MAGIC Pythonを使用して同様のテーブルを作成し、データを準備する。
+
+# COMMAND ----------
+
+
+from pyspark.sql import SparkSession
+
+spark = SparkSession.builder.appName("udf_example").getOrCreate()
+
+# データフレーム作成
+items_data = [
+    ("item1", "item1_name", 100),
+    ("item2", "item2_name", 200),
+    ("item3", "item3_name", 300),
+    ("item4", "item4_name", 400),
+    ("item5", "item5_name", 500)
+]
+
+columns = ["item_id", "name", "price"]
+itemsDF = spark.createDataFrame(items_data, columns)
+
+itemsDF.createOrReplaceTempView("item_lookup")
+
+display(itemsDF)
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC
+# MAGIC #### UDFの定義
+# MAGIC
+# MAGIC 次に、PythonでUDFを定義する。以下の例では、`sale_announcement`という関数を定義し、これにより指定されたアイテムのセール情報を生成する。
+# MAGIC
+
+# COMMAND ----------
+
+
+from pyspark.sql.functions import udf
+from pyspark.sql.types import StringType
+
+# UDFの定義
+def sale_announcement(item_name, item_price):
+    return f"The {item_name} is on sale for ${round(item_price * 0.8, 0)}"
+
+spark.udf.register("sale_announcement", sale_announcement, StringType())
+
+# UDFを使用したデータフレームの操作
+item_announcementDF = itemsDF.selectExpr("*", "sale_announcement(name, price) AS message")
+display(item_announcementDF)
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC ## ● SQL UDF を共有するためのセキュリティモデルについて説明する。
+# MAGIC
+# MAGIC SQL UDFのスコープとパーミッションに関する理解は、UDFを効果的に利用するために重要である。ここでは、DatabricksにおけるSQL UDFのスコープおよびパーミッションの取り扱いについて説明する。
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC ### SQL UDFのスコープ
+# MAGIC
+# MAGIC - SQL UDFは実行環境間で持続する。ノートブック、DBSQLクエリ、およびジョブを含めることができる。
+# MAGIC - UDFはメタストアにオブジェクトとして存在し、データベース、テーブル、またはビューと同じテーブルACLによって管理される。
+# MAGIC
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC ### SQL UDFのパーミッション
+# MAGIC
+# MAGIC - SQL UDFを作成 (create) するには、カタログにUSE CATALOG、スキーマにUSE SCHEMA、およびCREATE FUNCTIONのパーミッションが必要である。
+# MAGIC - SQL UDFを使用 (use) するには、カタログにUSE CATALOG、スキーマにUSE SCHEMA、および関数にEXECUTEのパーミッションが必要である。
+# MAGIC
+# MAGIC 以下に、SQLおよびPythonでの具体例を示す。
+# MAGIC
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC ### 1. SQL UDFのスコープとパーミッションに関する例
+# MAGIC
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC #### 設定とデータ準備
+# MAGIC
+# MAGIC まず、テーブルを作成し、データを準備する。
+# MAGIC
+
+# COMMAND ----------
+
+# MAGIC %sql
+# MAGIC CREATE OR REPLACE TEMP VIEW item_lookup AS
+# MAGIC SELECT 'item1' AS item_id, 'item1_name' AS name, 100 AS price UNION ALL
+# MAGIC SELECT 'item2', 'item2_name', 200 UNION ALL
+# MAGIC SELECT 'item3', 'item3_name', 300 UNION ALL
+# MAGIC SELECT 'item4', 'item4_name', 400 UNION ALL
+# MAGIC SELECT 'item5', 'item5_name', 500;
+# MAGIC
+# MAGIC SELECT * FROM item_lookup LIMIT 10;
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC #### UDFの定義
+# MAGIC
+# MAGIC 次に、SQLでUDFを定義する。
+# MAGIC
+
+# COMMAND ----------
+
+# MAGIC %sql
+# MAGIC CREATE OR REPLACE FUNCTION sale_announcement(item_name STRING, item_price INT)
+# MAGIC RETURNS STRING
+# MAGIC RETURN concat("The ", item_name, " is on sale for $", round(item_price * 0.8, 0));
+# MAGIC
+# MAGIC SELECT *, sale_announcement(name, price) AS message FROM item_lookup LIMIT 10;
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC #### UDFの説明とパーミッションの確認
+# MAGIC
+# MAGIC 定義したUDFの詳細を確認するために、`DESCRIBE FUNCTION`を使用する。
+# MAGIC
+
+# COMMAND ----------
+
+# MAGIC %sql
+# MAGIC DESCRIBE FUNCTION EXTENDED sale_announcement;
+# MAGIC
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC ### 2. Python UDFのスコープとパーミッションに関する例
+# MAGIC
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC #### 設定とデータ準備
+# MAGIC
+# MAGIC Pythonを使用して同様のテーブルを作成し、データを準備する。
+# MAGIC
+
+# COMMAND ----------
+
+from pyspark.sql import SparkSession
+
+spark = SparkSession.builder.appName("udf_example").getOrCreate()
+
+# データフレーム作成
+items_data = [
+    ("item1", "item1_name", 100),
+    ("item2", "item2_name", 200),
+    ("item3", "item3_name", 300),
+    ("item4", "item4_name", 400),
+    ("item5", "item5_name", 500)
+]
+
+columns = ["item_id", "name", "price"]
+itemsDF = spark.createDataFrame(items_data, columns)
+
+itemsDF.createOrReplaceTempView("item_lookup")
+
+display(itemsDF)
+
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC #### UDFの定義
+# MAGIC
+# MAGIC 次に、PythonでUDFを定義する。
+# MAGIC
+
+# COMMAND ----------
+
+from pyspark.sql.functions import udf
+from pyspark.sql.types import StringType
+
+# UDFの定義
+def sale_announcement(item_name, item_price):
+    return f"The {item_name} is on sale for ${round(item_price * 0.8, 0)}"
+
+spark.udf.register("sale_announcement", sale_announcement, StringType())
+
+# UDFを使用したデータフレームの操作
+item_announcementDF = itemsDF.selectExpr("*", "sale_announcement(name, price) AS message")
+display(item_announcementDF)
+
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC #### UDFの説明
+# MAGIC
+# MAGIC 定義したUDFの詳細を確認するためのSQLコマンドをPythonから実行することも可能である。
+# MAGIC
+
+# COMMAND ----------
+
+# SQLコマンドを実行してUDFの詳細を取得
+df = spark.sql("DESCRIBE FUNCTION EXTENDED sale_announcement")
+display(df)
+
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC ## ● CASE/WHENのシンプルな利用例とカスタム制御フローに CASE/WHEN を活用する方法
+# MAGIC
+# MAGIC
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC ### シンプルなCASE/WHENの利用例
+# MAGIC
+# MAGIC **CASE** / **WHEN** 句の形式でSQL UDFを制御フローと組み合わせると、SQLワークロード内の制御フローの実行が最適化される。標準のSQL構文構文 **CASE** / **WHEN** を使用すると、テーブルの内容に基づいて代替結果を持つ複数の条件文を評価できる。
+# MAGIC
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC #### SQL
+# MAGIC
+# MAGIC 以下に単純な **CASE** / **WHEN** を利用したSQLクエリを示す。ここでは、ある列の値に基づいて異なる結果を返す。
+# MAGIC
+
+# COMMAND ----------
+
+# MAGIC %sql
+# MAGIC
+# MAGIC -- テーブルの作成
+# MAGIC CREATE OR REPLACE TEMPORARY VIEW products AS
+# MAGIC SELECT 'Laptop' AS product, 1200 AS price UNION ALL
+# MAGIC SELECT 'Tablet' AS product, 800 AS price UNION ALL
+# MAGIC SELECT 'Smartphone' AS product, 600 AS price UNION ALL
+# MAGIC SELECT 'Monitor' AS product, 300 AS price UNION ALL
+# MAGIC SELECT 'Keyboard' AS product, 50 AS price;
+# MAGIC
+# MAGIC -- データ表示 (LIMIT 10)
+# MAGIC SELECT * FROM products LIMIT 10;
+# MAGIC
+
+# COMMAND ----------
+
+# MAGIC %sql
+# MAGIC
+# MAGIC -- CASE/WHEN の利用
+# MAGIC SELECT product, price,
+# MAGIC   CASE
+# MAGIC     WHEN price > 1000 THEN 'Expensive'
+# MAGIC     WHEN price > 500 THEN 'Moderate'
+# MAGIC     ELSE 'Cheap'
+# MAGIC   END AS price_category
+# MAGIC FROM products;
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC
+# MAGIC #### Python
+# MAGIC
+# MAGIC 以下に同じロジックをPythonを用いて実装する。
+
+# COMMAND ----------
+
+from pyspark.sql import SparkSession
+from pyspark.sql.functions import col, when
+
+# Sparkセッションの作成
+spark = SparkSession.builder.appName("CASEWHENExample").getOrCreate()
+
+# テーブルの作成
+data = [
+    ("Laptop", 1200),
+    ("Tablet", 800),
+    ("Smartphone", 600),
+    ("Monitor", 300),
+    ("Keyboard", 50)
+]
+
+columns = ["product", "price"]
+products_df = spark.createDataFrame(data, columns)
+
+# データ表示
+display(products_df)
+
+# CASE/WHENの利用
+products_df = products_df.withColumn(
+    "price_category",
+    when(col("price") > 1000, "Expensive")
+    .when(col("price") > 500, "Moderate")
+    .otherwise("Cheap")
+)
+
+# 結果表示
+display(products_df)
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC ### カスタム制御フローにCASE/WHENを活用する方法
+# MAGIC
+# MAGIC CASE/WHEN句を用いることで、より複雑なロジックを実行するカスタム制御フローを定義することができる。ここでは、完了した関数を作成し、この関数を用いて別のクエリで利用する例を示す。
+# MAGIC
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC #### SQL
+# MAGIC
+# MAGIC 以下は、カスタム関数を作成し、それを用いるSQLコードである。
+
+# COMMAND ----------
+
+# MAGIC %sql
+# MAGIC
+# MAGIC -- テーブルの作成
+# MAGIC CREATE OR REPLACE TEMPORARY VIEW item_lookup AS
+# MAGIC SELECT 'Standard Queen Mattress' AS name, 200 AS price UNION ALL
+# MAGIC SELECT 'Premium Queen Mattress' AS name, 1000 AS price UNION ALL
+# MAGIC SELECT 'Basic Pillow' AS name, 20 AS price UNION ALL
+# MAGIC SELECT 'Luxury Blanket' AS name, 300 AS price UNION ALL
+# MAGIC SELECT 'Standard Sheet' AS name, 40 AS price;
+# MAGIC
+# MAGIC -- データ表示 (LIMIT 10)
+# MAGIC SELECT * FROM item_lookup LIMIT 10;
+# MAGIC
+# MAGIC
+
+# COMMAND ----------
+
+# MAGIC %sql
+# MAGIC -- カスタム関数の作成
+# MAGIC CREATE OR REPLACE FUNCTION item_preference(name STRING, price INT)
+# MAGIC RETURNS STRING
+# MAGIC RETURN CASE 
+# MAGIC   WHEN name = "Standard Queen Mattress" THEN "This is my default mattress"
+# MAGIC   WHEN name = "Premium Queen Mattress" THEN "This is my favorite mattress"
+# MAGIC   WHEN price > 100 THEN concat("I'd wait until the ", name, " is on sale for $", round(price * 0.8, 0))
+# MAGIC   ELSE concat("I don't need a ", name)
+# MAGIC END;
+# MAGIC
+# MAGIC -- カスタム関数の利用
+# MAGIC SELECT *, item_preference(name, price) as preference FROM item_lookup;
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC #### Python
+# MAGIC
+# MAGIC 以下は、同じロジックをPythonを用いて実装する。
+
+# COMMAND ----------
+
+
+from pyspark.sql.types import StringType
+from pyspark.sql.functions import udf
+
+# テーブルの作成
+data = [
+    ("Standard Queen Mattress", 200),
+    ("Premium Queen Mattress", 1000),
+    ("Basic Pillow", 20),
+    ("Luxury Blanket", 300),
+    ("Standard Sheet", 40)
+]
+
+columns = ["name", "price"]
+item_df = spark.createDataFrame(data, columns)
+
+# データ表示
+display(item_df)
+
+# カスタム関数の定義
+def item_preference(name, price):
+    if name == "Standard Queen Mattress":
+        return "This is my default mattress"
+    elif name == "Premium Queen Mattress":
+        return "This is my favorite mattress"
+    elif price > 100:
+        return "I'd wait until the {} is on sale for ${}".format(name, round(price * 0.8))
+    else:
+        return "I don't need a {}".format(name)
+
+# UDFの登録
+item_preference_udf = udf(item_preference, StringType())
+
+# カスタム関数の利用
+item_df = item_df.withColumn("preference", item_preference_udf(col("name"), col("price")))
+
+# 結果表示
+display(item_df)
