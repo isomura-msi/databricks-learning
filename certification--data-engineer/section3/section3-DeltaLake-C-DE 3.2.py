@@ -1,20 +1,14 @@
 # Databricks notebook source
 # MAGIC %md
-# MAGIC ## ● DatabricksにおけるDelta Lakeのバージョニング操作
 # MAGIC
-
-# COMMAND ----------
-
-# MAGIC %md
-# MAGIC
-# MAGIC ### 前のバージョンのテーブルを記述した人物を特定する
+# MAGIC ## ● 前のバージョンのテーブルを記述した人物を特定する
 # MAGIC Delta Lakeテーブルの変更はすべてトランザクションログに記録されるため、どの人物が特定のバージョンのテーブルを記述したかを突き止めることができる。**`DESCRIBE HISTORY`** コマンドを用いると、この情報が簡単に確認可能である。
 # MAGIC
 
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC #### SQL
+# MAGIC ### SQL
 # MAGIC テーブルの履歴を確認するSQLクエリ例。
 
 # COMMAND ----------
@@ -40,7 +34,7 @@
 
 # MAGIC %md
 # MAGIC
-# MAGIC #### Python
+# MAGIC ### Python
 # MAGIC テーブルの履歴を確認するPythonコード例。
 
 # COMMAND ----------
@@ -102,14 +96,14 @@ display(history_df)
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC ### 特定のバージョンのテーブルをクエリーする
+# MAGIC ## ● 特定のバージョンのテーブルをクエリーする
 # MAGIC Delta Lakeのタイムトラベル機能を使って特定のバージョンのテーブルをクエリーすることが可能である。具体的には **`VERSION AS OF`** 句を使う。
 # MAGIC
 
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC #### SQL
+# MAGIC ### SQL
 # MAGIC 以下に特定のバージョンのテーブルをクエリーするSQLの例を示す。
 # MAGIC
 
@@ -125,7 +119,7 @@ display(history_df)
 
 # MAGIC %md
 # MAGIC
-# MAGIC #### Python
+# MAGIC ### Python
 # MAGIC Pythonを使った特定のバージョンのテーブルをクエリーする例。
 
 # COMMAND ----------
@@ -139,7 +133,7 @@ display(version_df)
 
 # MAGIC %md
 # MAGIC
-# MAGIC ### テーブルトランザクションの履歴を確認する
+# MAGIC ## ● テーブルトランザクションの履歴を確認する
 # MAGIC **`DESCRIBE HISTORY`**コマンドを使って、テーブルの全トランザクション履歴を確認できる。これには各バージョンの作成者やタイムスタンプも含まれる。
 # MAGIC
 
@@ -147,7 +141,7 @@ display(version_df)
 
 # MAGIC %md
 # MAGIC
-# MAGIC #### SQL
+# MAGIC ### SQL
 # MAGIC 以下にテーブルトランザクションの履歴を確認するSQLの例を示す。
 
 # COMMAND ----------
@@ -161,7 +155,7 @@ display(version_df)
 
 # MAGIC %md
 # MAGIC
-# MAGIC #### Python
+# MAGIC ### Python
 # MAGIC Pythonを使ってテーブルトランザクションの履歴を確認する例。
 
 # COMMAND ----------
@@ -175,14 +169,14 @@ display(history_df)
 
 # MAGIC %md
 # MAGIC
-# MAGIC ### テーブルを前のバージョンにロールバックする
+# MAGIC ## ● テーブルを前のバージョンにロールバックする
 # MAGIC **`RESTORE TABLE`** 機能を活用することで、簡単に前のバージョンにロールバックすることができる。
 
 # COMMAND ----------
 
 # MAGIC %md
 # MAGIC
-# MAGIC #### SQL
+# MAGIC ### SQL
 # MAGIC 以下に特定のバージョン8にロールバックするSQLの例を示す。
 
 # COMMAND ----------
@@ -202,7 +196,7 @@ display(history_df)
 
 # MAGIC %md
 # MAGIC
-# MAGIC #### Python
+# MAGIC ### Python
 # MAGIC Pythonを使ってテーブルを前のバージョンにロールバックする例。
 # MAGIC
 
@@ -218,14 +212,14 @@ display(df)
 
 # MAGIC %md
 # MAGIC
-# MAGIC ### テーブルを前のバージョンにロールバックできることを特定する
+# MAGIC ## ● テーブルを前のバージョンにロールバックできることを特定する
 # MAGIC テーブルの状態を前のバージョンに戻すことが可能かどうかは、**`RESTORE`** コマンドを使って確認する。
 
 # COMMAND ----------
 
 # MAGIC %md
 # MAGIC
-# MAGIC #### SQL
+# MAGIC ### SQL
 # MAGIC 以下にテーブルがバージョン4にロールバックできることを確認するSQLの例を示す。
 
 # COMMAND ----------
@@ -243,7 +237,7 @@ display(df)
 
 # MAGIC %md
 # MAGIC
-# MAGIC #### Python
+# MAGIC ### Python
 # MAGIC Pythonを使ってテーブルが前のバージョンにロールバックできることを確認する例。
 
 # COMMAND ----------
