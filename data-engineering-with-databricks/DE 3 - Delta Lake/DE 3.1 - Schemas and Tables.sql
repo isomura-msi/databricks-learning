@@ -166,7 +166,8 @@ DESCRIBE TABLE EXTENDED external_table;
 -- COMMAND ----------
 
 -- MAGIC %python
--- MAGIC display(dbutils.fs.ls("dbfs:/mnt/dbacademy-users/labuser6637203@vocareum.com/data-engineering-with-databricks/external_table"))
+-- MAGIC # display(dbutils.fs.ls("dbfs:/mnt/dbacademy-users/labuser6637203@vocareum.com/data-engineering-with-databricks/external_table"))
+-- MAGIC display(dbutils.fs.ls("dbfs:/mnt/dbacademy-users/isomura@msi.co.jp/data-engineering-with-databricks/external_table"))
 
 -- COMMAND ----------
 
