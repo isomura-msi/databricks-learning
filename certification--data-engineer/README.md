@@ -77,9 +77,9 @@
 - [x] Z-Ordering が Delta Lake テーブルで有益な理由を特定する。
 - [x] VACUUM でどのようにして削除がコミットされるのかを特定する。
 - [x] OPTIMIZE によって圧縮されるファイルの種類を特定する。
-- [ ] CTAS をソリューションとして特定する。
-- [ ] 生成された列を作成する。
-- [ ] テーブルのコメントを追加する。
+- [x] CTAS をソリューションとして特定する。
+- [x] 生成された列を作成する。
+- [x] テーブルのコメントを追加する。
 - [ ] CREATE OR REPLACE TABLE と INSERT OVERWRITE を使用する
 - [ ] CREATE OR REPLACE TABLE と INSERT OVERWRITE を比較対照する
 - [ ] MERGE を使用すべきシナリオを特定する。

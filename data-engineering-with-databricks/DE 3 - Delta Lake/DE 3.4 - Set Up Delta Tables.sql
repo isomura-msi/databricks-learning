@@ -51,8 +51,28 @@
 
 -- COMMAND ----------
 
+-- MAGIC %python
+-- MAGIC
+-- MAGIC display(f"{DA.paths.datasets}")
+
+-- COMMAND ----------
+
+SELECT * FROM parquet.`${DA.paths.datasets}/ecommerce/raw/sales-historical`;
+
+-- COMMAND ----------
+
+-- MAGIC %python
+-- MAGIC
+-- MAGIC display(dbutils.fs.ls(f"{DA.paths.datasets}/ecommerce/raw/sales-historical"))
+
+-- COMMAND ----------
+
 CREATE OR REPLACE TABLE sales AS
 SELECT * FROM parquet.`${DA.paths.datasets}/ecommerce/raw/sales-historical`;
+
+
+-- COMMAND ----------
+
 
 DESCRIBE EXTENDED sales;
 
@@ -70,8 +90,17 @@ DESCRIBE EXTENDED sales;
 
 -- COMMAND ----------
 
+SELECT * FROM csv.`${da.paths.datasets}/ecommerce/raw/sales-csv`;
+
+
+-- COMMAND ----------
+
 CREATE OR REPLACE TABLE sales_unparsed AS
 SELECT * FROM csv.`${da.paths.datasets}/ecommerce/raw/sales-csv`;
+
+
+-- COMMAND ----------
+
 
 SELECT * FROM sales_unparsed;
 
