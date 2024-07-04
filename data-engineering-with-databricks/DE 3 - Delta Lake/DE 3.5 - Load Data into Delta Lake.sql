@@ -60,6 +60,10 @@ SELECT * FROM parquet.`${da.paths.datasets}/ecommerce/raw/events-historical`
 
 -- COMMAND ----------
 
+select * from users;
+
+-- COMMAND ----------
+
 -- DBTITLE 0,--i18n-8f767697-33e6-4b5b-ac09-862076f77033
 -- MAGIC %md
 -- MAGIC テーブル履歴を確認すると、テーブルの以前のバージョンが置き換えられたことが分かります。
@@ -140,6 +144,17 @@ SELECT *, current_timestamp() FROM parquet.`${da.paths.datasets}/ecommerce/raw/s
 
 -- COMMAND ----------
 
+-- MAGIC %python
+-- MAGIC print(f"{DA.paths.datasets}/ecommerce/raw/sales-30m")
+-- MAGIC
+-- MAGIC display(dbutils.fs.ls(f"{DA.paths.datasets}/ecommerce/raw"))
+-- MAGIC display(dbutils.fs.ls(f"{DA.paths.datasets}/ecommerce/raw/sales-30m"))
+-- MAGIC
+-- MAGIC df = spark.read.parquet(f"{DA.paths.datasets}/ecommerce/raw/sales-30m")
+-- MAGIC display(df)
+
+-- COMMAND ----------
+
 INSERT INTO sales
 SELECT * FROM parquet.`${da.paths.datasets}/ecommerce/raw/sales-30m`
 
@@ -166,6 +181,12 @@ SELECT * FROM parquet.`${da.paths.datasets}/ecommerce/raw/sales-30m`
 -- MAGIC </code></strong>
 -- MAGIC
 -- MAGIC  **`MERGE`** 操作を使用して、更新されたメールアドレスと新しいユーザーで過去のユーザーデータを更新します。
+
+-- COMMAND ----------
+
+CREATE OR REPLACE TEMP VIEW users_update AS 
+SELECT * FROM parquet.`${da.paths.datasets}/ecommerce/raw/users-30m`;
+select * from users_update;
 
 -- COMMAND ----------
 
