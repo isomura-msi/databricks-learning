@@ -1,6 +1,6 @@
 -- Databricks notebook source
 -- MAGIC %md
--- MAGIC # ブロンズ
+-- MAGIC # データ準備
 
 -- COMMAND ----------
 
@@ -52,6 +52,9 @@
 -- MAGIC %md
 -- MAGIC ## 環境変数に設定
 -- MAGIC SQLソースでデータフォルダパスやDeltaデータファイル配置フォルダパスなどを参照できるように環境変数に設定する。
+-- MAGIC
+-- MAGIC ただし設定した環境変数は結局使わないことになったので無駄だった。  
+-- MAGIC ※SQL内では変数展開が出来ないっぽい。
 
 -- COMMAND ----------
 
@@ -62,6 +65,11 @@
 -- MAGIC # Deltaデータファイル配置フォルダパス
 -- MAGIC DELTA_DATA_PATH = "/mnt/my-external-data/external_table"
 -- MAGIC spark.conf.set("spark.sql.deltaDirFullPath", DELTA_DATA_PATH)
+
+-- COMMAND ----------
+
+-- MAGIC %md
+-- MAGIC # ブロンズ
 
 -- COMMAND ----------
 
