@@ -305,3 +305,12 @@ DA.print_pipeline_config(pipeline_language)
 # MAGIC
 # MAGIC - certification--data-engineer/section3/data/my-first-pipeline.PNG
 # MAGIC - certification--data-engineer/section3/data/my-first-pipeline-gold-table.PNG
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC ### ○ 振り返り
+# MAGIC
+# MAGIC Databricks Academy のライブラリの成果物として利用したのは、「Target」の値、つまりスキーマだけ。  
+# MAGIC なのでスキーマだけ定義できれば DA ライブラリは無用。  
+# MAGIC ※先に進めたい・面倒なのでやり直さないけど。
